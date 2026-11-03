@@ -1,12 +1,18 @@
 """Test helpers: a fake planner/extractor LLM that reads the real prompt, and a tiny PDF writer."""
 
+import asyncio
+import os
 import re
 
+import pytest
 from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from ai.llm.base import LLMInvalidOutput
 from ai.llm.fake import FakeLLM
 from ai.prompts.extraction import CandidateOut, ExtractionOutput, JobOut, ProjectOut
+from ai.prompts.interviewer import LiveDecisionOut
 from ai.prompts.planner import PlannedQuestionOut, PlannerOutput
 
 CV_TEXT = (
@@ -107,7 +113,52 @@ def default_extraction(prompt: str) -> ExtractionOutput:
     )
 
 
-def fake_llm(*, planner_failures: int = 0, extraction_error: Exception | None = None) -> FakeLLM:
+_ANSWER = re.compile(r"<candidate_answer>(.*?)</candidate_answer>", re.DOTALL)
+
+
+def latest_answer(prompt: str) -> str:
+    answers = _ANSWER.findall(prompt)
+    return answers[-1] if answers else ""
+
+
+def default_live_decision(prompt: str) -> LiveDecisionOut:
+    """Short answer → follow-up quoting it; "không biết" → move on; otherwise → move on."""
+    answer = latest_answer(prompt)
+    allowed_follow_up = "follow_up" in prompt.split("Hành động được phép:")[-1].split(".")[0]
+    if "không biết" in answer.lower():
+        return LiveDecisionOut(
+            answer_quality="no_answer",
+            covered_points=[],
+            missing_points=["mọi ý"],
+            next_action="move_on",
+            question_text="",
+            brief_note="ứng viên không biết",
+        )
+    if len(answer) < 60 and allowed_follow_up:
+        return LiveDecisionOut(
+            answer_quality="partial",
+            covered_points=[],
+            missing_points=["ý chính"],
+            next_action="follow_up",
+            question_text=f"Bạn vừa nói “{answer[:30]}”. Bạn giải thích rõ hơn vì sao không?",
+            brief_note="thiếu ý",
+        )
+    return LiveDecisionOut(
+        answer_quality="strong",
+        covered_points=["ý chính"],
+        missing_points=[],
+        next_action="move_on",
+        question_text="",
+        brief_note="đủ ý",
+    )
+
+
+def fake_llm(
+    *,
+    planner_failures: int = 0,
+    extraction_error: Exception | None = None,
+    live_error: Exception | None = None,
+) -> FakeLLM:
     state = {"planner_failures": planner_failures}
 
     def responder(system: str, prompt: str, schema: type[BaseModel]) -> BaseModel | Exception:
@@ -118,9 +169,47 @@ def fake_llm(*, planner_failures: int = 0, extraction_error: Exception | None = 
                 state["planner_failures"] -= 1
                 return LLMInvalidOutput("bad json")
             return default_planner_output(prompt)
+        if schema is LiveDecisionOut:
+            return live_error or default_live_decision(prompt)
         raise AssertionError(f"unexpected schema {schema}")
 
     return FakeLLM(responder=responder)
+
+
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+MAX_UPLOAD = 50_000
+requires_db = [
+    pytest.mark.db,
+    pytest.mark.skipif(not TEST_DATABASE_URL, reason="set TEST_DATABASE_URL to run DB tests"),
+]
+
+
+def run_sql(database_url: str, statement: str, **params):
+    """Run one SQL statement on a fresh async engine; returns rows for SELECTs."""
+
+    async def run():
+        engine = create_async_engine(database_url)
+        try:
+            async with engine.begin() as conn:
+                result = await conn.execute(text(statement), params)
+                return result.all() if result.returns_rows else None
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(run())
+
+
+def guest_headers(client) -> dict[str, str]:
+    response = client.post("/api/auth/guest")
+    assert response.status_code == 201
+    return {"Authorization": f"Bearer {response.json()['token']}"}
+
+
+def create_session(client, headers: dict[str, str], **payload) -> dict:
+    body = {"role": "ai_engineer", "level": "fresher", "mode": "demo", **payload}
+    response = client.post("/api/interviews", json=body, headers=headers)
+    assert response.status_code == 201, response.text
+    return response.json()
 
 
 def make_pdf(text: str) -> bytes:

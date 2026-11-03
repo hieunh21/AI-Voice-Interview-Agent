@@ -4,11 +4,12 @@ The full `InterviewPlan` is never sent to the client: it contains expected point
 notes, which would leak the answers. Clients get `PlanPreview` (topics, counts, time budget).
 """
 
+import re
 import uuid
 from datetime import datetime
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from ai.schemas.common import (
     ContractModel,
@@ -138,6 +139,25 @@ class SessionView(ContractModel):
         if pending and pending != [numbers[-1]]:
             raise ValueError("only the latest turn may be unanswered")
         return self
+
+
+MAX_ANSWER_CHARS = 4_000
+_ANSWER_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+class AnswerRequest(ContractModel):
+    """Body of `POST /api/interviews/{id}/answer`."""
+
+    # Client-generated idempotency key: retrying the same request never creates a second turn.
+    request_id: str = Field(min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    # The turn being answered; a stale value (question already moved on) is rejected.
+    turn_no: int = Field(ge=1)
+    answer_text: str = Field(min_length=1, max_length=MAX_ANSWER_CHARS)
+
+    @field_validator("answer_text", mode="before")
+    @classmethod
+    def _clean(cls, value: object) -> object:
+        return _ANSWER_CONTROL_CHARS.sub("", value).strip() if isinstance(value, str) else value
 
 
 class ReportResponse(ContractModel):

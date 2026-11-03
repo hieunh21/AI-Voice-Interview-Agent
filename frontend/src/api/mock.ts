@@ -296,6 +296,7 @@ export function createMockApi({ latency = true }: { latency?: boolean } = {}): A
 
   return {
     supportsLiveInterview: true,
+    supportsReport: true,
 
     async createInterview(setup, files) {
       await pause(600)
@@ -372,6 +373,9 @@ export function createMockApi({ latency = true }: { latency?: boolean } = {}): A
       if (session.status !== 'in_progress') throw new ApiError(409, 'Phiên phỏng vấn đã kết thúc.')
       const pending = session.turns.at(-1)
       if (!pending || pending.answer_text !== null) throw new ApiError(409, 'Không có câu hỏi đang chờ.')
+      if (pending.turn_no !== submission.turn_no) {
+        throw new ApiError(409, 'Câu hỏi đã thay đổi. Hãy tải lại trang.')
+      }
       const answer = submission.answer_text.trim()
       if (!answer) throw new ApiError(422, 'Câu trả lời không được để trống.')
 

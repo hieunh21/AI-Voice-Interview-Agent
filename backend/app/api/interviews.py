@@ -5,11 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ai.schemas.enums import DocumentKind
 from ai.schemas.interview import InterviewSetup
-from app.api.deps import CurrentUser, PreparerDep, SessionDep, SettingsDep
+from app.api.deps import CurrentUser, InterviewerDep, PreparerDep, SessionDep, SettingsDep
 from app.core.config import Settings
 from app.models import User
-from app.schemas.interview import SessionSummary, SessionView
+from app.schemas.interview import AnswerRequest, SessionSummary, SessionView
 from app.services import interviews as service
+from app.services import live
 from app.services.interviews import ServiceError
 
 router = APIRouter(prefix="/interviews", tags=["interviews"])
@@ -88,6 +89,46 @@ async def prepare_interview(
     """Build and freeze the InterviewPlan. Idempotent once the session is ready."""
     session = await service.get_owned_session(db, user, session_id)
     await service.prepare_session(db, session, preparer)
+    return await service.session_view(db, session)
+
+
+@router.post("/{session_id}/start", response_model=SessionView)
+async def start_interview(session_id: uuid.UUID, user: CurrentUser, db: SessionDep) -> SessionView:
+    """Start a prepared session and ask the first planned question. Idempotent."""
+    session = await service.get_owned_session(db, user, session_id)
+    await live.start_interview(db, session)
+    return await service.session_view(db, session)
+
+
+@router.post("/{session_id}/answer", response_model=SessionView)
+async def answer_question(
+    session_id: uuid.UUID,
+    body: AnswerRequest,
+    user: CurrentUser,
+    db: SessionDep,
+    interviewer: InterviewerDep,
+) -> SessionView:
+    """Record the answer to the pending turn, then ask a follow-up, the next question, or finish.
+
+    Retrying with the same `request_id` is a no-op; a stale `turn_no` is rejected with 409.
+    """
+    session = await service.get_owned_session(db, user, session_id)
+    await live.submit_answer(
+        db,
+        session,
+        interviewer,
+        request_id=body.request_id,
+        turn_no=body.turn_no,
+        answer_text=body.answer_text,
+    )
+    return await service.session_view(db, session)
+
+
+@router.post("/{session_id}/finish", response_model=SessionView)
+async def finish_interview(session_id: uuid.UUID, user: CurrentUser, db: SessionDep) -> SessionView:
+    """End the interview early (answered turns are kept). Idempotent."""
+    session = await service.get_owned_session(db, user, session_id)
+    await live.finish_interview(db, session)
     return await service.session_view(db, session)
 
 

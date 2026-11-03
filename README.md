@@ -6,9 +6,10 @@ adaptive follow-up questions and produces an evidence-linked feedback report.
 
 > **Status.** Working today: guest sessions, optional CV/JD (paste, TXT or PDF), rule-based
 > playbook selection, a LangGraph planner (Gemini, with a seed-only fallback) that produces a
-> frozen, versioned interview plan, and the plan preview UI. In progress: the adaptive interview
-> loop, Vietnamese voice, and the evidence-based report. Design rationale:
-> [`docs/decisions.md`](docs/decisions.md).
+> frozen, versioned interview plan, and an adaptive **text** interview: a LangGraph interviewer
+> that follows up on what the candidate actually said, within backend-enforced limits, with
+> idempotent answers and resume after refresh. In progress: Vietnamese voice and the
+> evidence-based report. Design rationale: [`docs/decisions.md`](docs/decisions.md).
 
 ## Scope
 
@@ -54,6 +55,8 @@ ai/
   documents.py            PDF/TXT text extraction
   nodes/                  CV/JD analysis, planner validation/assembly
   graphs/prep_graph.py    LangGraph PREP graph
+  graphs/interview_graph.py  LangGraph LIVE graph (answer analysis → rules → next turn)
+  live_rules.py           backend-enforced interview limits
   llm/                    structured-output LLM interface, Gemini adapter, fake
   prompts/                versioned prompts
   scoring.py              deterministic score aggregation
@@ -96,7 +99,10 @@ Set `VITE_API_MODE=mock` in `frontend/.env.local` to run the UI without a backen
 | `POST /api/interviews` | Create a session: `role`, `level` required; `mode`, `cv_text`, `jd_text` optional |
 | `POST /api/interviews/{id}/cv`, `/jd` | Upload an optional CV / JD (PDF with text layer, or TXT) |
 | `POST /api/interviews/{id}/prepare` | Build and freeze the interview plan (idempotent) |
-| `GET /api/interviews`, `GET /api/interviews/{id}` | List sessions / session with plan preview |
+| `POST /api/interviews/{id}/start` | Start a prepared session; returns the first question (idempotent) |
+| `POST /api/interviews/{id}/answer` | `{request_id, turn_no, answer_text}` → follow-up, next question or end |
+| `POST /api/interviews/{id}/finish` | End early; answered turns are kept (idempotent) |
+| `GET /api/interviews`, `GET /api/interviews/{id}` | List sessions / session with plan preview and turns |
 | `DELETE /api/interviews/{id}` | Delete a session with its documents, plan and transcript |
 | `GET /docs` | OpenAPI UI (disabled in production) |
 

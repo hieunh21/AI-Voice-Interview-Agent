@@ -93,9 +93,32 @@ describe('http api client', () => {
     await expect(api.listInterviews()).rejects.toMatchObject({ status: 0 })
   })
 
-  it('does not offer the live interview yet', async () => {
+  it('drives the live interview through start, answer and finish', async () => {
+    const calls = stubFetch([
+      json(200, { id: 's1', status: 'in_progress' }),
+      json(200, { id: 's1', status: 'in_progress' }),
+      json(200, { id: 's1', status: 'completed' }),
+    ])
     const api = createHttpApi('http://api.test', memoryStore('tok'))
-    expect(api.supportsLiveInterview).toBe(false)
-    await expect(api.startInterview('x')).rejects.toMatchObject({ status: 501 })
+    expect(api.supportsLiveInterview).toBe(true)
+    await api.startInterview('s1')
+    await api.submitAnswer('s1', { request_id: 'req-12345', turn_no: 1, answer_text: 'Trả lời' })
+    await api.finishInterview('s1')
+    expect(calls.map((c) => `${c.init.method} ${c.url}`)).toEqual([
+      'POST http://api.test/api/interviews/s1/start',
+      'POST http://api.test/api/interviews/s1/answer',
+      'POST http://api.test/api/interviews/s1/finish',
+    ])
+    expect(JSON.parse(calls[1]?.init.body as string)).toEqual({
+      request_id: 'req-12345',
+      turn_no: 1,
+      answer_text: 'Trả lời',
+    })
+  })
+
+  it('does not offer scored reports yet', async () => {
+    const api = createHttpApi('http://api.test', memoryStore('tok'))
+    expect(api.supportsReport).toBe(false)
+    await expect(api.getReport('x')).rejects.toMatchObject({ status: 501 })
   })
 })

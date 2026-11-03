@@ -153,6 +153,31 @@ personalisation is lost). Quota errors never switch to another (paid) model.
 `POST /api/auth/guest` returns a 256-bit random token once; only its SHA-256 is stored. Every
 interview endpoint requires it, and another user's session answers 404, not 403.
 
+## D19 — LIVE: the LLM proposes, backend rules decide
+
+Each answer triggers one structured LLM call (`AnswerDecision`: quality, covered/missing expected
+points, `follow_up | clarify | move_on`, question text). `ai/live_rules.py` then enforces:
+turns are **reserved for every remaining main question** (so follow-ups never cost core-skill
+coverage), at most `max_followups_per_question` follow-ups and one clarification per thread, no
+extra turns with < 90 s left, no repeated question text, and only the rules can end an interview
+(`plan_completed`, `time_budget`, `max_turns` as a safety net, or the user). When nothing but
+`move_on` is allowed, the LLM is not called at all.
+
+## D20 — LIVE degrades gracefully
+
+LLM error/timeout/invalid output → a reviewed follow-up probe from the plan for short answers,
+otherwise the next planned question. The interview never stalls on the model. Each answered
+turn stores the decision, its source (`llm` / `fallback` / `rules`), latency and prompt version —
+never chain-of-thought.
+
+## D21 — One transaction per answer, guarded three ways
+
+`POST /answer` locks the session row (`FOR UPDATE NOWAIT`) for the whole step (record answer → LLM
+decision → next turn), so a crash leaves nothing half-written and a concurrent submission gets an
+immediate 409. A repeated `request_id` is a no-op (idempotent retry), and a stale `turn_no` is
+rejected, so a double click can never answer the next question with the previous text. State is
+rebuilt from the database each request, so refresh/restart resumes exactly where it stopped.
+
 ## D13 — Frontend mocks are contract-tested
 
 With `VITE_API_MODE=mock` the UI runs on in-browser mocks backed by four fixtures (no documents, CV only, JD only,

@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from ai.graphs.interview_graph import Interviewer
 from ai.llm.base import StructuredLLM
 from app import __version__
 from app.api.router import api_router
@@ -58,6 +59,7 @@ def create_app(
     app.state.db = Database(settings.database_url)
     app.state.library = library
     app.state.preparer = build_preparer(settings, library, llm)
+    app.state.interviewer = Interviewer(llm)
 
     @app.exception_handler(ServiceError)
     async def _service_error(_: Request, exc: ServiceError) -> JSONResponse:

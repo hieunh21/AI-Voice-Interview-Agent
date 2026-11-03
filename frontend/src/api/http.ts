@@ -9,8 +9,7 @@ import {
 } from './types'
 
 const TOKEN_KEY = 'intervai.guestToken'
-const NOT_YET =
-  'Phần phỏng vấn trực tiếp đang được phát triển. Hiện bạn có thể tạo và xem kế hoạch phỏng vấn.'
+const NOT_YET = 'Báo cáo chấm điểm đang được phát triển và sẽ có ở bản tiếp theo.'
 const OFFLINE = 'Không kết nối được máy chủ. Hãy kiểm tra backend đang chạy.'
 
 export interface TokenStore {
@@ -107,7 +106,8 @@ export function createHttpApi(baseUrl: string, tokens: TokenStore = browserToken
   }
 
   return {
-    supportsLiveInterview: false,
+    supportsLiveInterview: true,
+    supportsReport: false,
 
     async createInterview(setup: InterviewSetup, files?: SetupFiles) {
       const created = await request<SessionView>('POST', '/api/interviews', setup)
@@ -126,9 +126,10 @@ export function createHttpApi(baseUrl: string, tokens: TokenStore = browserToken
     listInterviews: () => request<SessionSummary[]>('GET', '/api/interviews'),
     deleteInterview: (id) => request<void>('DELETE', `/api/interviews/${id}`),
 
-    startInterview: notYet,
-    submitAnswer: notYet,
-    finishInterview: notYet,
+    startInterview: (id) => request<SessionView>('POST', `/api/interviews/${id}/start`),
+    submitAnswer: (id, submission) =>
+      request<SessionView>('POST', `/api/interviews/${id}/answer`, submission),
+    finishInterview: (id) => request<SessionView>('POST', `/api/interviews/${id}/finish`),
     getReport: notYet as () => Promise<ReportResponse>,
   }
 }

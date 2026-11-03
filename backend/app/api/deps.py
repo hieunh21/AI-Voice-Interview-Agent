@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ai.graphs.interview_graph import Interviewer
 from ai.graphs.prep_graph import Preparer
 from app.core.config import Settings
 from app.db import Database
@@ -28,6 +29,10 @@ def get_preparer(request: Request) -> Preparer:
     return request.app.state.preparer
 
 
+def get_interviewer(request: Request) -> Interviewer:
+    return request.app.state.interviewer
+
+
 async def get_session(
     db: Annotated[Database, Depends(get_database)],
 ) -> AsyncIterator[AsyncSession]:
@@ -39,6 +44,7 @@ SettingsDep = Annotated[Settings, Depends(get_settings_dep)]
 DatabaseDep = Annotated[Database, Depends(get_database)]
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 PreparerDep = Annotated[Preparer, Depends(get_preparer)]
+InterviewerDep = Annotated[Interviewer, Depends(get_interviewer)]
 
 
 async def get_current_user(

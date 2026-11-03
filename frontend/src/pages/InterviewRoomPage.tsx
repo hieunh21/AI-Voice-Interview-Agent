@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { api } from '../api'
-import type { SessionView } from '../api/types'
+import { ApiError, type SessionView } from '../api/types'
 import { PlanPreviewCard } from '../components/PlanPreviewCard'
 import { Transcript } from '../components/Transcript'
 import { Badge, Button, Card, Notice, Spinner } from '../components/ui'
@@ -127,6 +127,7 @@ function LiveView({ session, onChange }: { session: SessionView; onChange: (s: S
     try {
       const next = await api.submitAnswer(session.id, {
         request_id: lastAttempt.current.requestId,
+        turn_no: pending.turn_no,
         answer_text: text,
       })
       lastAttempt.current = null
@@ -134,13 +135,21 @@ function LiveView({ session, onChange }: { session: SessionView; onChange: (s: S
       onChange(next)
     } catch (err) {
       setError(errorMessage(err))
+      // 409: the question moved on or another submission is in flight — show the latest state.
+      if (err instanceof ApiError && err.status === 409) {
+        try {
+          onChange(await api.getInterview(session.id))
+        } catch {
+          // keep the current view; the error is already shown
+        }
+      }
     } finally {
       setBusy(null)
     }
   }
 
   async function finishEarly() {
-    if (!window.confirm('Kết thúc phỏng vấn ngay? Các câu đã trả lời vẫn được chấm điểm.')) return
+    if (!window.confirm('Kết thúc phỏng vấn ngay? Các câu đã trả lời vẫn được lưu lại.')) return
     setBusy('finish')
     setError(null)
     try {
@@ -216,7 +225,7 @@ function LiveView({ session, onChange }: { session: SessionView; onChange: (s: S
                 {answer.length}/{MAX_ANSWER_CHARS}
               </span>
               <Button onClick={submit} disabled={!answer.trim() || busy !== null}>
-                {busy === 'answer' ? 'Đang gửi…' : 'Gửi câu trả lời'}
+                {busy === 'answer' ? 'AI đang đọc câu trả lời…' : 'Gửi câu trả lời'}
               </Button>
             </div>
           </div>
@@ -242,8 +251,18 @@ function CompletedView({ session }: { session: SessionView }) {
       <p className="mt-2 text-sm text-slate-600">
         {session.turns.filter((t) => t.answer_text !== null).length} lượt trả lời đã được ghi nhận.
       </p>
+      {!api.supportsReport && (
+        <p className="mx-auto mt-3 max-w-md text-sm text-slate-500">
+          Báo cáo chấm điểm theo rubric sẽ có ở bản tiếp theo. Bạn có thể xem lại toàn bộ
+          transcript của buổi này.
+        </p>
+      )}
       <div className="mt-5 flex justify-center gap-3">
-        <Button onClick={() => navigate(`/interviews/${session.id}/report`)}>Xem báo cáo</Button>
+        {api.supportsReport ? (
+          <Button onClick={() => navigate(`/interviews/${session.id}/report`)}>Xem báo cáo</Button>
+        ) : (
+          <Button onClick={() => navigate(`/history/${session.id}`)}>Xem transcript</Button>
+        )}
         <Button variant="secondary" onClick={() => navigate('/')}>
           Phỏng vấn mới
         </Button>

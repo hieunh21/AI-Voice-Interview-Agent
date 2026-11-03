@@ -1,84 +1,24 @@
-"""API flow against a real PostgreSQL (TEST_DATABASE_URL) with a fake LLM."""
+"""Session/plan API against a real PostgreSQL (TEST_DATABASE_URL) with a fake LLM."""
 
-import asyncio
-import os
 import uuid
-from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
-from alembic import command
-from alembic.config import Config
 from fastapi.testclient import TestClient
-from helpers import CV_TEXT, JD_TEXT, fake_llm, make_pdf
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from helpers import (
+    CV_TEXT,
+    JD_TEXT,
+    MAX_UPLOAD,
+    create_session,
+    guest_headers,
+    make_pdf,
+    requires_db,
+    run_sql,
+)
 
 from ai.schemas.interview import InterviewPlan
 from app.core.config import Settings
-from app.main import create_app
 
-TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
-BACKEND_DIR = Path(__file__).resolve().parents[2] / "backend"
-MAX_UPLOAD = 50_000
-
-pytestmark = [
-    pytest.mark.db,
-    pytest.mark.skipif(not TEST_DATABASE_URL, reason="set TEST_DATABASE_URL to run DB tests"),
-]
-
-
-@pytest.fixture(scope="module")
-def settings() -> Settings:
-    assert TEST_DATABASE_URL
-    return Settings(  # type: ignore[call-arg]
-        _env_file=None,
-        app_env="test",
-        database_url=TEST_DATABASE_URL,
-        cors_origins="http://localhost:5173",
-        allow_draft_playbooks=True,
-        max_upload_bytes=MAX_UPLOAD,
-    )
-
-
-@pytest.fixture(scope="module")
-def migrated(settings: Settings) -> None:
-    config = Config(str(BACKEND_DIR / "alembic.ini"))
-    config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
-    command.upgrade(config, "head")
-
-
-def _sql(settings: Settings, statement: str, **params):
-    async def run():
-        engine = create_async_engine(settings.database_url)
-        try:
-            async with engine.begin() as conn:
-                result = await conn.execute(text(statement), params)
-                return result.all() if result.returns_rows else None
-        finally:
-            await engine.dispose()
-
-    return asyncio.run(run())
-
-
-@pytest.fixture
-def client(settings: Settings, migrated: None) -> Iterator[TestClient]:
-    _sql(settings, "TRUNCATE users CASCADE")
-    with TestClient(create_app(settings, llm=fake_llm())) as test_client:
-        yield test_client
-
-
-def _guest(client: TestClient) -> dict[str, str]:
-    response = client.post("/api/auth/guest")
-    assert response.status_code == 201
-    return {"Authorization": f"Bearer {response.json()['token']}"}
-
-
-def _create(client: TestClient, headers: dict[str, str], **payload) -> dict:
-    body = {"role": "ai_engineer", "level": "fresher", "mode": "demo", **payload}
-    response = client.post("/api/interviews", json=body, headers=headers)
-    assert response.status_code == 201, response.text
-    return response.json()
+pytestmark = requires_db
 
 
 def test_endpoints_require_a_guest_token(client: TestClient) -> None:
@@ -88,8 +28,8 @@ def test_endpoints_require_a_guest_token(client: TestClient) -> None:
 
 
 def test_role_and_level_only_flow(client: TestClient, settings: Settings) -> None:
-    headers = _guest(client)
-    session = _create(client, headers)
+    headers = guest_headers(client)
+    session = create_session(client, headers)
     assert session["status"] == "created"
     assert session["plan_preview"] is None
     assert (session["has_cv"], session["has_jd"]) == (False, False)
@@ -107,8 +47,8 @@ def test_role_and_level_only_flow(client: TestClient, settings: Settings) -> Non
     again = client.post(f"/api/interviews/{session['id']}/prepare", headers=headers)
     assert again.json()["plan_preview"] == preview  # idempotent
 
-    [(plan_json,)] = _sql(
-        settings,
+    [(plan_json,)] = run_sql(
+        settings.database_url,
         "SELECT plan_json FROM interview_plans WHERE session_id = :id",
         id=uuid.UUID(session["id"]),
     )
@@ -122,12 +62,12 @@ def test_role_and_level_only_flow(client: TestClient, settings: Settings) -> Non
 
     assert client.delete(f"/api/interviews/{session['id']}", headers=headers).status_code == 204
     assert client.get(f"/api/interviews/{session['id']}", headers=headers).status_code == 404
-    assert _sql(settings, "SELECT count(*) FROM interview_plans")[0][0] == 0
+    assert run_sql(settings.database_url, "SELECT count(*) FROM interview_plans")[0][0] == 0
 
 
 def test_documents_personalise_the_plan(client: TestClient) -> None:
-    headers = _guest(client)
-    session = _create(client, headers, jd_text=JD_TEXT)
+    headers = guest_headers(client)
+    session = create_session(client, headers, jd_text=JD_TEXT)
     uploaded = client.post(
         f"/api/interviews/{session['id']}/cv",
         headers=headers,
@@ -142,8 +82,8 @@ def test_documents_personalise_the_plan(client: TestClient) -> None:
 
 
 def test_new_document_invalidates_an_existing_plan(client: TestClient) -> None:
-    headers = _guest(client)
-    session = _create(client, headers)
+    headers = guest_headers(client)
+    session = create_session(client, headers)
     client.post(f"/api/interviews/{session['id']}/prepare", headers=headers)
     pdf = make_pdf("Backend developer with FastAPI and PostgreSQL experience in production")
     view = client.post(
@@ -164,8 +104,8 @@ def test_new_document_invalidates_an_existing_plan(client: TestClient) -> None:
     ],
 )
 def test_bad_uploads_are_rejected(client: TestClient, filename, data, status) -> None:
-    headers = _guest(client)
-    session = _create(client, headers)
+    headers = guest_headers(client)
+    session = create_session(client, headers)
     response = client.post(
         f"/api/interviews/{session['id']}/cv", headers=headers, files={"file": (filename, data)}
     )
@@ -174,8 +114,8 @@ def test_bad_uploads_are_rejected(client: TestClient, filename, data, status) ->
 
 
 def test_sessions_are_private_to_their_owner(client: TestClient) -> None:
-    owner, stranger = _guest(client), _guest(client)
-    session = _create(client, owner)
+    owner, stranger = guest_headers(client), guest_headers(client)
+    session = create_session(client, owner)
     for method, path in [
         ("get", f"/api/interviews/{session['id']}"),
         ("post", f"/api/interviews/{session['id']}/prepare"),
@@ -186,6 +126,6 @@ def test_sessions_are_private_to_their_owner(client: TestClient) -> None:
 
 
 def test_invalid_setup_is_rejected(client: TestClient) -> None:
-    headers = _guest(client)
+    headers = guest_headers(client)
     for payload in ({"level": "fresher"}, {"role": "frontend", "level": "fresher"}):
         assert client.post("/api/interviews", json=payload, headers=headers).status_code == 422

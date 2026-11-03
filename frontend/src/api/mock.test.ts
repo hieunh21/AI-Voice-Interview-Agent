@@ -6,7 +6,12 @@ const SHORT = 'Em nghĩ là dùng embedding.'
 const LONG = 'Câu trả lời đầy đủ. '.repeat(15)
 
 async function answerPending(api: ApiClient, session: SessionView, text: string) {
-  return api.submitAnswer(session.id, { request_id: crypto.randomUUID(), answer_text: text })
+  const turnNo = session.turns.at(-1)?.turn_no ?? 0
+  return api.submitAnswer(session.id, {
+    request_id: crypto.randomUUID(),
+    turn_no: turnNo,
+    answer_text: text,
+  })
 }
 
 describe('mock API', () => {
@@ -60,10 +65,20 @@ describe('mock API', () => {
     const api = createMockApi({ latency: false })
     const created = await api.createInterview({ role: 'backend_developer', level: 'junior', mode: 'demo' })
     const started = await api.startInterview(created.id)
-    const submission = { request_id: crypto.randomUUID(), answer_text: LONG }
+    const submission = { request_id: crypto.randomUUID(), turn_no: 1, answer_text: LONG }
     const first = await api.submitAnswer(started.id, submission)
     const retry = await api.submitAnswer(started.id, submission)
     expect(retry.turns).toEqual(first.turns)
+  })
+
+  it('rejects an answer for a question that is no longer pending', async () => {
+    const api = createMockApi({ latency: false })
+    const created = await api.createInterview({ role: 'ai_engineer', level: 'junior', mode: 'demo' })
+    const started = await api.startInterview(created.id)
+    await answerPending(api, started, LONG)
+    await expect(
+      api.submitAnswer(started.id, { request_id: crypto.randomUUID(), turn_no: 1, answer_text: LONG }),
+    ).rejects.toMatchObject({ status: 409 })
   })
 
   it('personalises the opening question when a CV is provided', async () => {

@@ -160,6 +160,8 @@ export interface ReportResponse {
 export interface AnswerSubmission {
   /** Idempotency key: retrying the same submission never creates a second turn. */
   request_id: string
+  /** The pending turn being answered; the server rejects stale values with 409. */
+  turn_no: number
   answer_text: string
 }
 
@@ -169,8 +171,10 @@ export interface SetupFiles {
 }
 
 export interface ApiClient {
-  /** Whether start/answer/finish/report are available (the live interview arrives later). */
+  /** Whether start/answer/finish are available. */
   readonly supportsLiveInterview: boolean
+  /** Whether scored reports are available (evaluation arrives in a later release). */
+  readonly supportsReport: boolean
   /** Create a session, upload optional files, then prepare its plan. */
   createInterview(setup: InterviewSetup, files?: SetupFiles): Promise<SessionView>
   /** (Re)build the plan of a session that is not ready yet (e.g. after a failure). */
