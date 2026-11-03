@@ -23,6 +23,7 @@ from ai.schemas.enums import AnswerMode, EndReason, SessionStatus
 from ai.schemas.interview import InterviewPlan
 from app.models import InterviewSession, InterviewTurn
 from app.services.interviews import ServiceError, load_plan
+from app.services.reports import ensure_report_row
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,9 @@ async def submit_answer(
     request_id: str,
     turn_no: int,
     answer_text: str,
-) -> None:
+    answer_mode: AnswerMode = AnswerMode.TEXT,
+) -> bool:
+    """Returns True when this answer completed the interview (a report job should be scheduled)."""
     try:
         locked = await db.scalar(
             select(InterviewSession)
@@ -115,7 +118,7 @@ async def submit_answer(
     )
     if already is not None:
         await db.rollback()
-        return  # retry of a processed request: no-op
+        return False  # retry of a processed request: no-op
 
     if locked.status is not SessionStatus.IN_PROGRESS:
         raise ServiceError(409, "Phiên phỏng vấn không còn diễn ra.")
@@ -134,7 +137,7 @@ async def submit_answer(
 
     now = _now()
     pending.answer_text = answer_text
-    pending.answer_mode = AnswerMode.TEXT
+    pending.answer_mode = answer_mode
     pending.answer_request_id = request_id
     pending.answered_at = now
 
@@ -164,13 +167,15 @@ async def submit_answer(
         "prompt_version": LIVE_PROMPT_VERSION,
     }
 
-    if outcome.next_turn is not None:
+    completed = outcome.next_turn is None
+    if not completed:
         db.add(_turn_row(session.id, pending.turn_no + 1, outcome.next_turn, plan))
         locked.current_turn = pending.turn_no + 1
     else:
         locked.status = SessionStatus.COMPLETED
         locked.ended_at = now
         locked.end_reason = outcome.end_reason
+        await ensure_report_row(db, session.id)
     await db.commit()
     logger.info(
         "Session %s turn %d → %s (%s, %d ms)",
@@ -180,14 +185,16 @@ async def submit_answer(
         result.source,
         result.latency_ms,
     )
+    return completed
 
 
-async def finish_interview(db: AsyncSession, session: InterviewSession) -> None:
+async def finish_interview(db: AsyncSession, session: InterviewSession) -> bool:
+    """End early. Returns True when a report job should be scheduled (answers exist)."""
     if session.status is SessionStatus.COMPLETED:
-        return  # idempotent
+        return False  # idempotent
     if session.status is not SessionStatus.IN_PROGRESS:
         raise ServiceError(409, "Chỉ kết thúc được phiên đang diễn ra.")
-    await db.execute(
+    ended = await db.execute(
         update(InterviewSession)
         .where(
             InterviewSession.id == session.id,
@@ -195,4 +202,6 @@ async def finish_interview(db: AsyncSession, session: InterviewSession) -> None:
         )
         .values(status=SessionStatus.COMPLETED, ended_at=_now(), end_reason=EndReason.USER_ENDED)
     )
+    has_report = ended.rowcount == 1 and await ensure_report_row(db, session.id)
     await db.commit()
+    return has_report

@@ -6,10 +6,11 @@ import {
   type SessionSummary,
   type SessionView,
   type SetupFiles,
+  type SpeechCapabilities,
+  type Transcript,
 } from './types'
 
 const TOKEN_KEY = 'intervai.guestToken'
-const NOT_YET = 'Báo cáo chấm điểm đang được phát triển và sẽ có ở bản tiếp theo.'
 const OFFLINE = 'Không kết nối được máy chủ. Hãy kiểm tra backend đang chạy.'
 
 export interface TokenStore {
@@ -81,7 +82,7 @@ export function createHttpApi(baseUrl: string, tokens: TokenStore = browserToken
     return created
   }
 
-  async function request<T>(method: string, path: string, body?: unknown, retried = false): Promise<T> {
+  async function authed(method: string, path: string, body?: unknown, retried = false): Promise<Response> {
     const headers: Record<string, string> = { Authorization: `Bearer ${await token()}` }
     let payload: BodyInit | undefined
     if (body instanceof FormData) {
@@ -94,20 +95,21 @@ export function createHttpApi(baseUrl: string, tokens: TokenStore = browserToken
     if (response.status === 401 && !retried) {
       // Token lost or revoked: start a fresh guest identity once.
       tokens.clear()
-      return request<T>(method, path, body, true)
+      return authed(method, path, body, true)
     }
     if (!response.ok) throw await toApiError(response)
+    return response
+  }
+
+  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const response = await authed(method, path, body)
     if (response.status === 204) return undefined as T
     return (await response.json()) as T
   }
 
-  const notYet = async (): Promise<never> => {
-    throw new ApiError(501, NOT_YET)
-  }
-
   return {
     supportsLiveInterview: true,
-    supportsReport: false,
+    supportsReport: true,
 
     async createInterview(setup: InterviewSetup, files?: SetupFiles) {
       const created = await request<SessionView>('POST', '/api/interviews', setup)
@@ -130,6 +132,24 @@ export function createHttpApi(baseUrl: string, tokens: TokenStore = browserToken
     submitAnswer: (id, submission) =>
       request<SessionView>('POST', `/api/interviews/${id}/answer`, submission),
     finishInterview: (id) => request<SessionView>('POST', `/api/interviews/${id}/finish`),
-    getReport: notYet as () => Promise<ReportResponse>,
+    getReport: (id) => request<ReportResponse>('GET', `/api/interviews/${id}/report`),
+    retryReport: (id) => request<ReportResponse>('POST', `/api/interviews/${id}/report/retry`),
+
+    async speechCapabilities() {
+      const response = await send('/api/speech/capabilities', { method: 'GET' })
+      if (!response.ok) throw await toApiError(response)
+      return (await response.json()) as SpeechCapabilities
+    },
+
+    transcribe(id, audio) {
+      const form = new FormData()
+      form.append('file', audio, 'answer.wav')
+      return request<Transcript>('POST', `/api/interviews/${id}/transcribe`, form)
+    },
+
+    async questionAudio(id, turnNo) {
+      const response = await authed('GET', `/api/interviews/${id}/turns/${turnNo}/audio`)
+      return response.blob()
+    },
   }
 }

@@ -8,6 +8,9 @@ from ai.llm.gemini import GeminiLLM
 from ai.playbook_loader import PlaybookLibrary, load_library
 from ai.playbooks.lint import lint_library
 from app.core.config import Settings
+from speech.interfaces import SpeechToText, TextToSpeech
+from speech.stt_providers import GeminiSpeechToText
+from speech.tts_providers import CachedTextToSpeech, ElevenLabsTextToSpeech
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +47,31 @@ def build_llm(settings: Settings) -> StructuredLLM | None:
         model=settings.gemini_model,
         timeout_seconds=settings.llm_timeout_seconds,
         base_url=settings.gemini_base_url,
+    )
+
+
+def build_stt(settings: Settings) -> SpeechToText | None:
+    if settings.gemini_api_key is None:
+        return None
+    return GeminiSpeechToText(
+        api_key=settings.gemini_api_key.get_secret_value(),
+        model=settings.gemini_model,
+        timeout_seconds=settings.stt_timeout_seconds,
+        base_url=settings.gemini_base_url,
+    )
+
+
+def build_tts(settings: Settings) -> TextToSpeech | None:
+    if settings.elevenlabs_api_key is None or not settings.elevenlabs_voice_id:
+        logger.warning("ElevenLabs key or voice id missing: the browser voice reads questions")
+        return None
+    return CachedTextToSpeech(
+        ElevenLabsTextToSpeech(
+            api_key=settings.elevenlabs_api_key.get_secret_value(),
+            voice_id=settings.elevenlabs_voice_id,
+            model=settings.elevenlabs_model,
+            timeout_seconds=settings.tts_timeout_seconds,
+        )
     )
 
 

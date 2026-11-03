@@ -178,6 +178,43 @@ immediate 409. A repeated `request_id` is a no-op (idempotent retry), and a stal
 rejected, so a double click can never answer the next question with the previous text. State is
 rebuilt from the database each request, so refresh/restart resumes exactly where it stopped.
 
+## D22 — Turn-based voice: WAV in the browser, Gemini STT, ElevenLabs TTS, text always available
+
+- **Recording:** `MediaRecorder` (any codec the browser has), converted in the browser to 16 kHz
+  mono WAV — Gemini does not list WebM as an audio input, every STT accepts WAV, and the backend can
+  check the duration from the header (≤ 3 min). The transcript is shown for editing before it is
+  sent; the turn records `answer_mode = voice`.
+- **STT:** Gemini audio understanding through the same key/gateway as the LLM — no extra vendor.
+  The prompt carries a glossary (terms from the current question first, then every playbook
+  keyword) and asks for canonical spelling; thinking is disabled for 2.5 Flash. Measured on a test
+  clip: terms like LangGraph, BM25, CI/CD transcribed correctly in ~5 s for 15 s of audio (a
+  single-skill glossary had produced "LangChain").
+- **TTS:** ElevenLabs `eleven_flash_v2_5` (Vietnamese) behind an LRU cache keyed by text. The
+  endpoint only speaks questions of the caller's own session (`/turns/{n}/audio`), never arbitrary
+  text, to protect credits. Without a key/voice, or on failure, the browser voice reads the
+  question.
+- **Privacy:** recordings are processed in memory and never stored; only the confirmed transcript
+  is persisted.
+
+## D23 — Evaluation: the LLM scores, code verifies and computes
+
+- One call per **question thread** (main question + follow-ups/clarifications), with the frozen
+  question, expected points, scoring caution, rubric weights and 1–5 anchors, and the
+  turn-numbered transcript. A second call scores cross-cutting skills over the whole transcript;
+  a third writes the summary (deterministic fallback if it fails).
+- Every score must cite a quote that is found **verbatim** in the cited turn's answer
+  (`ai/evaluation/evidence.py`). Invalid quotes are dropped; a criterion left without evidence makes
+  the thread invalid → one retry with the problems listed → otherwise `insufficient_evidence`.
+  An unbacked score never reaches a report. Cross-cutting criteria without evidence stay empty.
+- Weighted/skill/overall scores come from `ai/scoring.py`, using the plan's frozen rubric weights
+  and frozen skill weights (`SelectedSkill.weight`), never from the model.
+- Jobs: `interview_reports` row created in the transaction that completes the session (only if
+  something was answered), claimed with a conditional UPDATE, re-queued on startup when pending or
+  stale; failed jobs can be retried and never produce a second report.
+- Live smoke test (one synthetic session, gemini-2.5-flash, 3 evaluations of the same transcript):
+  per-question scores differed by at most 0.25 on the 1–5 scale; off-topic answers were scored 1
+  with the off-topic sentence as evidence. This is a smoke test, not the benchmark.
+
 ## D13 — Frontend mocks are contract-tested
 
 With `VITE_API_MODE=mock` the UI runs on in-browser mocks backed by four fixtures (no documents, CV only, JD only,

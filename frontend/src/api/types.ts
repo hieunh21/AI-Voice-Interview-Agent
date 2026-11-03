@@ -147,7 +147,7 @@ export interface InterviewReport {
   top_strengths: string[]
   priority_improvements: string[]
   study_topics: string[]
-  versions: { rubric: string; evaluator_prompt: string }
+  versions: { rubric: string; evaluator_prompt: string; evaluator_model?: string | null }
   disclaimer: string
   generated_at: string
 }
@@ -163,6 +163,19 @@ export interface AnswerSubmission {
   /** The pending turn being answered; the server rejects stale values with 409. */
   turn_no: number
   answer_text: string
+  /** "voice" when the text came from a (possibly edited) transcript. */
+  answer_mode?: 'text' | 'voice'
+}
+
+export interface SpeechCapabilities {
+  stt: boolean
+  tts: boolean
+  tts_provider: string | null
+}
+
+export interface Transcript {
+  text: string
+  latency_ms: number
 }
 
 export interface SetupFiles {
@@ -185,7 +198,14 @@ export interface ApiClient {
   submitAnswer(id: string, submission: AnswerSubmission): Promise<SessionView>
   finishInterview(id: string): Promise<SessionView>
   getReport(id: string): Promise<ReportResponse>
+  /** Re-run a failed evaluation; a completed report is returned unchanged. */
+  retryReport(id: string): Promise<ReportResponse>
   deleteInterview(id: string): Promise<void>
+  speechCapabilities(): Promise<SpeechCapabilities>
+  /** Recorded answer (WAV) → editable transcript. */
+  transcribe(id: string, audio: Blob): Promise<Transcript>
+  /** Spoken version of the question in `turnNo` (server TTS). */
+  questionAudio(id: string, turnNo: number): Promise<Blob>
 }
 
 export class ApiError extends Error {

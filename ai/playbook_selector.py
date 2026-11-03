@@ -196,6 +196,7 @@ def select_playbooks(
                 is_core=c.config.core,
                 target_questions=c.questions,
                 reasons=c.reasons or ["Phù hợp với vị trí và cấp độ"],
+                weight=c.config.weight,
             )
             for c in chosen
         ],

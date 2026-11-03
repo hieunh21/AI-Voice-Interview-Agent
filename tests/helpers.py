@@ -11,6 +11,15 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from ai.llm.base import LLMInvalidOutput
 from ai.llm.fake import FakeLLM
+from ai.prompts.evaluator import (
+    CriterionOut,
+    CrossCuttingOut,
+    CrossSkillOut,
+    EvidenceOut,
+    ReportSummaryOut,
+    SkillSummaryOut,
+    ThreadEvaluationOut,
+)
 from ai.prompts.extraction import CandidateOut, ExtractionOutput, JobOut, ProjectOut
 from ai.prompts.interviewer import LiveDecisionOut
 from ai.prompts.planner import PlannedQuestionOut, PlannerOutput
@@ -153,12 +162,63 @@ def default_live_decision(prompt: str) -> LiveDecisionOut:
     )
 
 
+_CRITERION = re.compile(r"^- criterion_id: (\w+) \(", re.MULTILINE)
+_TURN_ANSWER = re.compile(r'<candidate_answer turn="(\d+)">(.*?)</candidate_answer>', re.DOTALL)
+
+
+def _criteria_out(prompt: str, *, invent: bool) -> list[CriterionOut]:
+    answers = [(int(n), text) for n, text in _TURN_ANSWER.findall(prompt)]
+    turn_no, text = answers[0]
+    quote = "Tôi bịa ra câu này" if invent else " ".join(text.split()[:6])
+    score = 1 if "không biết" in text.lower() else (4 if len(text) > 60 else 2)
+    return [
+        CriterionOut(
+            criterion_id=cid,
+            score=score,
+            rationale="Nhận xét giả lập.",
+            evidence=[EvidenceOut(turn_no=turn_no, quote=quote)],
+        )
+        for cid in _CRITERION.findall(prompt)
+    ]
+
+
+def default_thread_evaluation(prompt: str, mode: str) -> ThreadEvaluationOut:
+    invent = mode == "invented" or (mode == "invented_once" and "Lần chấm trước" not in prompt)
+    return ThreadEvaluationOut(
+        insufficient_evidence=mode == "insufficient",
+        criteria=[] if mode == "insufficient" else _criteria_out(prompt, invent=invent),
+        covered_points=["ý đã nêu"],
+        missed_points=["ý còn thiếu"],
+        strengths=["Điểm mạnh giả lập"],
+        gaps=["Điểm cần cải thiện giả lập"],
+        improvement_suggestion="Nêu thêm ví dụ và cách đo.",
+    )
+
+
+def default_cross_cutting(prompt: str) -> CrossCuttingOut:
+    skills = []
+    for section in prompt.split("## skill_id: ")[1:]:
+        skill_id = section.split(" ", 1)[0]
+        transcript = prompt[prompt.index("Toàn bộ transcript:") :]
+        skills.append(
+            CrossSkillOut(
+                skill_id=skill_id,
+                criteria=_criteria_out(section.split("\n\n")[0] + "\n" + transcript, invent=False),
+                summary=f"Tóm tắt {skill_id}",
+            )
+        )
+    return CrossCuttingOut(skills=skills)
+
+
 def fake_llm(
     *,
     planner_failures: int = 0,
     extraction_error: Exception | None = None,
     live_error: Exception | None = None,
+    evaluation_mode: str = "valid",
+    evaluation_error: Exception | None = None,
 ) -> FakeLLM:
+    """evaluation_mode: valid | invented | invented_once | insufficient."""
     state = {"planner_failures": planner_failures}
 
     def responder(system: str, prompt: str, schema: type[BaseModel]) -> BaseModel | Exception:
@@ -171,6 +231,17 @@ def fake_llm(
             return default_planner_output(prompt)
         if schema is LiveDecisionOut:
             return live_error or default_live_decision(prompt)
+        if schema is ThreadEvaluationOut:
+            return evaluation_error or default_thread_evaluation(prompt, evaluation_mode)
+        if schema is CrossCuttingOut:
+            return evaluation_error or default_cross_cutting(prompt)
+        if schema is ReportSummaryOut:
+            return evaluation_error or ReportSummaryOut(
+                skill_summaries=[SkillSummaryOut(skill_id="rag_systems", summary="Tóm tắt RAG")],
+                top_strengths=["Giải thích rõ ràng"],
+                priority_improvements=["Bổ sung số liệu"],
+                study_topics=["Recall@K"],
+            )
         raise AssertionError(f"unexpected schema {schema}")
 
     return FakeLLM(responder=responder)
@@ -210,6 +281,64 @@ def create_session(client, headers: dict[str, str], **payload) -> dict:
     response = client.post("/api/interviews", json=body, headers=headers)
     assert response.status_code == 201, response.text
     return response.json()
+
+
+class FakeSpeechToText:
+    provider_id = "fake-stt"
+
+    def __init__(
+        self, transcript: str = "Em sẽ dùng RAG với hybrid search và đo Recall@K."
+    ) -> None:
+        self.transcript = transcript
+        self.calls: list[tuple[int, str, list[str]]] = []
+        self.error: Exception | None = None
+
+    async def transcribe(self, audio: bytes, *, mime_type: str, hints: list[str]) -> str:
+        self.calls.append((len(audio), mime_type, hints))
+        if self.error:
+            raise self.error
+        return self.transcript
+
+
+class FakeTextToSpeech:
+    provider_id = "fake-tts"
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self.error: Exception | None = None
+
+    async def synthesize(self, text: str):
+        from speech.interfaces import SynthesizedAudio
+
+        self.calls.append(text)
+        if self.error:
+            raise self.error
+        return SynthesizedAudio(data=b"ID3fake-mp3:" + text.encode(), mime_type="audio/mpeg")
+
+
+def make_wav(seconds: float, rate: int = 16_000) -> bytes:
+    """Mono 16-bit PCM WAV of silence."""
+    import struct
+
+    samples = int(seconds * rate)
+    data = b"\x00\x00" * samples
+    header = struct.pack(
+        "<4sI4s4sIHHIIHH4sI",
+        b"RIFF",
+        36 + len(data),
+        b"WAVE",
+        b"fmt ",
+        16,
+        1,
+        1,
+        rate,
+        rate * 2,
+        2,
+        16,
+        b"data",
+        len(data),
+    )
+    return header + data
 
 
 def make_pdf(text: str) -> bytes:

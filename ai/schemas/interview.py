@@ -82,6 +82,8 @@ class SelectedSkill(ContractModel):
     is_core: bool
     target_questions: int = Field(ge=1)
     reasons: list[str] = Field(default_factory=list)
+    # Catalog weight frozen at PREP; used for the overall score (None → equal weights).
+    weight: float | None = Field(default=None, gt=0, le=1)
 
 
 class PlaybookSelection(ContractModel):

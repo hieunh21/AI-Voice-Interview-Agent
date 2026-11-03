@@ -20,6 +20,7 @@ from ai.schemas.common import (
     ThreadQuestionId,
 )
 from ai.schemas.enums import (
+    AnswerMode,
     EndReason,
     InputSource,
     InterviewMode,
@@ -153,6 +154,8 @@ class AnswerRequest(ContractModel):
     # The turn being answered; a stale value (question already moved on) is rejected.
     turn_no: int = Field(ge=1)
     answer_text: str = Field(min_length=1, max_length=MAX_ANSWER_CHARS)
+    # "voice" when the text came from a (possibly edited) transcript of a recording.
+    answer_mode: AnswerMode = AnswerMode.TEXT
 
     @field_validator("answer_text", mode="before")
     @classmethod

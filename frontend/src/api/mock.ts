@@ -427,11 +427,28 @@ export function createMockApi({ latency = true }: { latency?: boolean } = {}): A
       return { status: record.session.report_status, report: structuredClone(record.report) }
     },
 
+    async retryReport(id) {
+      return this.getReport(id)
+    },
+
     async deleteInterview(id) {
       await pause()
       get(id)
       records.delete(id)
       persist()
+    },
+
+    // Mock mode has no server speech: questions use the browser voice; recording is disabled.
+    async speechCapabilities() {
+      return { stt: false, tts: false, tts_provider: null }
+    },
+
+    async transcribe() {
+      throw new ApiError(501, 'Chế độ mô phỏng không hỗ trợ ghi âm.')
+    },
+
+    async questionAudio() {
+      throw new ApiError(501, 'Chế độ mô phỏng không có giọng đọc máy chủ.')
     },
   }
 }

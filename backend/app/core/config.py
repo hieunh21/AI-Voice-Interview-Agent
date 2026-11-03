@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     planner_context_chars: int = Field(default=24_000, ge=2_000, le=100_000)
     max_upload_bytes: int = Field(default=5 * 1024 * 1024, ge=1024, le=20 * 1024 * 1024)
 
+    # Voice. STT reuses the Gemini key/gateway; TTS needs ElevenLabs key + voice.
+    elevenlabs_api_key: SecretStr | None = None
+    elevenlabs_model: str = "eleven_flash_v2_5"
+    elevenlabs_voice_id: str | None = None
+    tts_timeout_seconds: float = Field(default=20, gt=0, le=120)
+    stt_timeout_seconds: float = Field(default=45, gt=0, le=180)
+    max_audio_bytes: int = Field(default=8 * 1024 * 1024, ge=10_000, le=25 * 1024 * 1024)
+
     @field_validator("database_url")
     @classmethod
     def _normalise_database_url(cls, value: str) -> str:
@@ -45,7 +53,13 @@ class Settings(BaseSettings):
             return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
         return value
 
-    @field_validator("gemini_api_key", "gemini_base_url", mode="before")
+    @field_validator(
+        "gemini_api_key",
+        "gemini_base_url",
+        "elevenlabs_api_key",
+        "elevenlabs_voice_id",
+        mode="before",
+    )
     @classmethod
     def _empty_is_none(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value

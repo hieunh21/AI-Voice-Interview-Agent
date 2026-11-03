@@ -90,6 +90,7 @@ class CrossCuttingResult(ContractModel):
 class ReportVersions(ContractModel):
     rubric: SemVer
     evaluator_prompt: SemVer
+    evaluator_model: str | None = None
 
 
 class InterviewReport(ContractModel):

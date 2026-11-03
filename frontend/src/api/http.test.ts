@@ -116,9 +116,42 @@ describe('http api client', () => {
     })
   })
 
-  it('does not offer scored reports yet', async () => {
+  it('uploads recordings and fetches question audio with the guest token', async () => {
+    const calls = stubFetch([
+      json(200, { text: 'Em dùng RAG', latency_ms: 900 }),
+      new Response(new Blob(['mp3']), { status: 200, headers: { 'Content-Type': 'audio/mpeg' } }),
+      json(200, { stt: true, tts: true, tts_provider: 'elevenlabs' }),
+    ])
     const api = createHttpApi('http://api.test', memoryStore('tok'))
-    expect(api.supportsReport).toBe(false)
-    await expect(api.getReport('x')).rejects.toMatchObject({ status: 501 })
+    const transcript = await api.transcribe('s1', new Blob(['RIFF'], { type: 'audio/wav' }))
+    const audio = await api.questionAudio('s1', 3)
+    const caps = await api.speechCapabilities()
+
+    expect(transcript.text).toBe('Em dùng RAG')
+    expect(await audio.text()).toBe('mp3')
+    expect(caps).toEqual({ stt: true, tts: true, tts_provider: 'elevenlabs' })
+    expect(calls.map((c) => `${c.init.method} ${c.url}`)).toEqual([
+      'POST http://api.test/api/interviews/s1/transcribe',
+      'GET http://api.test/api/interviews/s1/turns/3/audio',
+      'GET http://api.test/api/speech/capabilities',
+    ])
+    const form = calls[0]?.init.body as FormData
+    expect((form.get('file') as File).name).toBe('answer.wav')
+    expect((calls[1]?.init.headers as Record<string, string>).Authorization).toBe('Bearer tok')
+  })
+
+  it('reads and retries reports', async () => {
+    const calls = stubFetch([
+      json(200, { status: 'processing', report: null }),
+      json(200, { status: 'pending', report: null }),
+    ])
+    const api = createHttpApi('http://api.test', memoryStore('tok'))
+    expect(api.supportsReport).toBe(true)
+    expect((await api.getReport('s1')).status).toBe('processing')
+    expect((await api.retryReport('s1')).status).toBe('pending')
+    expect(calls.map((c) => `${c.init.method} ${c.url}`)).toEqual([
+      'GET http://api.test/api/interviews/s1/report',
+      'POST http://api.test/api/interviews/s1/report/retry',
+    ])
   })
 })

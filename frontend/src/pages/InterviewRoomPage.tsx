@@ -1,13 +1,16 @@
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { api } from '../api'
-import { ApiError, type SessionView } from '../api/types'
+import { ApiError, type SessionView, type SpeechCapabilities } from '../api/types'
 import { PlanPreviewCard } from '../components/PlanPreviewCard'
 import { Transcript } from '../components/Transcript'
 import { Badge, Button, Card, Notice, Spinner } from '../components/ui'
 import { errorMessage } from '../lib/errors'
 import { SESSION_STATUS_LABELS, TURN_KIND_LABELS } from '../lib/labels'
+import { formatSeconds, MAX_RECORDING_SECONDS } from '../lib/audio'
 import { useLoader } from '../lib/useLoader'
+import { useQuestionVoice } from '../lib/useQuestionVoice'
+import { useRecorder } from '../lib/useRecorder'
 
 const MAX_ANSWER_CHARS = 4000
 const loadSession = (id: string) => api.getInterview(id)
@@ -100,10 +103,23 @@ function ReadyView({ session, onChange }: { session: SessionView; onChange: (s: 
   )
 }
 
+const AUTOPLAY_KEY = 'intervai.readQuestions'
+
+function readAutoplayPreference(): boolean {
+  try {
+    return localStorage.getItem(AUTOPLAY_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
 function LiveView({ session, onChange }: { session: SessionView; onChange: (s: SessionView) => void }) {
   const [answer, setAnswer] = useState('')
+  const [answerMode, setAnswerMode] = useState<'text' | 'voice'>('text')
   const [busy, setBusy] = useState<'answer' | 'finish' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [speech, setSpeech] = useState<SpeechCapabilities | null>(null)
+  const [autoplay, setAutoplay] = useState(readAutoplayPreference)
   const lastAttempt = useRef<{ key: string; requestId: string } | null>(null)
 
   const plan = session.plan_preview
@@ -115,6 +131,56 @@ function LiveView({ session, onChange }: { session: SessionView; onChange: (s: S
   const pending = current && current.answer_text === null ? current : undefined
   const answered = pending ? session.turns.slice(0, -1) : session.turns
   const mainAsked = session.turns.filter((turn) => turn.kind === 'main').length
+
+  useEffect(() => {
+    let active = true
+    api.speechCapabilities().then(
+      (caps) => {
+        if (active) setSpeech(caps)
+      },
+      () => {
+        if (active) setSpeech({ stt: false, tts: false, tts_provider: null })
+      },
+    )
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const voice = useQuestionVoice({
+    sessionId: session.id,
+    turnNo: pending?.turn_no,
+    text: pending?.question_text,
+    autoplay: autoplay && speech !== null,
+    serverTts: Boolean(speech?.tts),
+  })
+
+  const onRecorded = useCallback(
+    async (wav: Blob) => {
+      const { text } = await api.transcribe(session.id, wav)
+      setAnswer((previous) => (previous.trim() ? `${previous.trim()} ${text}` : text))
+      setAnswerMode('voice')
+    },
+    [session.id],
+  )
+  const recorder = useRecorder(onRecorded)
+  const canRecord = recorder.supported && Boolean(speech?.stt)
+
+  function toggleAutoplay() {
+    const next = !autoplay
+    setAutoplay(next)
+    if (!next) voice.stop()
+    try {
+      localStorage.setItem(AUTOPLAY_KEY, next ? 'on' : 'off')
+    } catch {
+      // preference only
+    }
+  }
+
+  function startRecording() {
+    voice.stop()
+    void recorder.start()
+  }
 
   async function submit() {
     const text = answer.trim()
@@ -129,9 +195,11 @@ function LiveView({ session, onChange }: { session: SessionView; onChange: (s: S
         request_id: lastAttempt.current.requestId,
         turn_no: pending.turn_no,
         answer_text: text,
+        answer_mode: answerMode,
       })
       lastAttempt.current = null
       setAnswer('')
+      setAnswerMode('text')
       onChange(next)
     } catch (err) {
       setError(errorMessage(err))
@@ -191,9 +259,24 @@ function LiveView({ session, onChange }: { session: SessionView; onChange: (s: S
 
       {pending && (
         <Card className="ring-2 ring-indigo-200">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            <Badge tone={pending.kind === 'main' ? 'indigo' : 'sky'}>{TURN_KIND_LABELS[pending.kind]}</Badge>
-            <span>{skillTitles.get(pending.skill_id) ?? pending.skill_id}</span>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={pending.kind === 'main' ? 'indigo' : 'sky'}>{TURN_KIND_LABELS[pending.kind]}</Badge>
+              <span>{skillTitles.get(pending.skill_id) ?? pending.skill_id}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => (voice.speaking ? voice.stop() : void voice.speak())}
+                className="font-medium text-indigo-600 hover:underline"
+              >
+                {voice.speaking ? '⏹ Dừng đọc' : '🔊 Nghe câu hỏi'}
+              </button>
+              <label className="flex cursor-pointer items-center gap-1">
+                <input type="checkbox" checked={autoplay} onChange={toggleAutoplay} />
+                Tự đọc câu hỏi
+              </label>
+            </div>
           </div>
           <p className="mt-3 text-lg font-medium text-slate-900">{pending.question_text}</p>
 
@@ -207,19 +290,46 @@ function LiveView({ session, onChange }: { session: SessionView; onChange: (s: S
             onKeyDown={onKeyDown}
             rows={6}
             autoFocus
-            disabled={busy !== null}
-            placeholder="Nhập câu trả lời của bạn… (Ctrl + Enter để gửi)"
+            disabled={busy !== null || recorder.status !== 'idle'}
+            placeholder={
+              canRecord
+                ? 'Bấm Ghi âm để trả lời bằng giọng nói, hoặc gõ câu trả lời… (Ctrl + Enter để gửi)'
+                : 'Nhập câu trả lời của bạn… (Ctrl + Enter để gửi)'
+            }
             className="mt-4 w-full rounded-lg border-0 px-3 py-2 text-sm ring-1 ring-slate-300 focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50"
           />
+          {answerMode === 'voice' && recorder.status === 'idle' && (
+            <p className="mt-1 text-xs text-sky-700">
+              Đây là transcript từ giọng nói — hãy kiểm tra và sửa thuật ngữ bị nhận sai trước khi gửi.
+            </p>
+          )}
+          {recorder.error && (
+            <div className="mt-3">
+              <Notice title="Ghi âm không thành công" tone="amber">
+                {recorder.error}
+              </Notice>
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <Button
-              variant="secondary"
-              disabled
-              title="Trả lời bằng giọng nói sẽ có ở bản tiếp theo"
-              aria-label="Trả lời bằng giọng nói (sắp có)"
-            >
-              🎙 Giọng nói (sắp có)
-            </Button>
+            {recorder.status === 'recording' ? (
+              <Button variant="danger" onClick={recorder.stop}>
+                <span className="size-2 animate-pulse rounded-full bg-rose-600" />
+                Dừng · {formatSeconds(recorder.seconds)} / {formatSeconds(MAX_RECORDING_SECONDS)}
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                onClick={startRecording}
+                disabled={!canRecord || busy !== null || recorder.status === 'processing'}
+                title={
+                  canRecord
+                    ? 'Ghi âm câu trả lời'
+                    : 'Nhận dạng giọng nói chưa sẵn sàng trên máy chủ hoặc trình duyệt này'
+                }
+              >
+                {recorder.status === 'processing' ? 'Đang nhận dạng…' : '🎙 Ghi âm'}
+              </Button>
+            )}
             <div className="flex items-center gap-3">
               <span className="text-xs text-slate-500">
                 {answer.length}/{MAX_ANSWER_CHARS}
@@ -244,6 +354,7 @@ function LiveView({ session, onChange }: { session: SessionView; onChange: (s: S
 
 function CompletedView({ session }: { session: SessionView }) {
   const navigate = useNavigate()
+  const hasReport = api.supportsReport && session.report_status !== null
   return (
     <Card className="text-center">
       <p className="text-4xl">🎉</p>
@@ -251,14 +362,13 @@ function CompletedView({ session }: { session: SessionView }) {
       <p className="mt-2 text-sm text-slate-600">
         {session.turns.filter((t) => t.answer_text !== null).length} lượt trả lời đã được ghi nhận.
       </p>
-      {!api.supportsReport && (
-        <p className="mx-auto mt-3 max-w-md text-sm text-slate-500">
-          Báo cáo chấm điểm theo rubric sẽ có ở bản tiếp theo. Bạn có thể xem lại toàn bộ
-          transcript của buổi này.
-        </p>
-      )}
+      <p className="mx-auto mt-3 max-w-md text-sm text-slate-500">
+        {hasReport
+          ? 'AI đang chấm từng câu theo rubric, mọi nhận xét đều kèm trích dẫn từ câu trả lời của bạn.'
+          : 'Buổi này không có câu trả lời nào để chấm. Bạn vẫn có thể xem lại transcript.'}
+      </p>
       <div className="mt-5 flex justify-center gap-3">
-        {api.supportsReport ? (
+        {hasReport ? (
           <Button onClick={() => navigate(`/interviews/${session.id}/report`)}>Xem báo cáo</Button>
         ) : (
           <Button onClick={() => navigate(`/history/${session.id}`)}>Xem transcript</Button>

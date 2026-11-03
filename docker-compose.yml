@@ -31,6 +31,9 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       GEMINI_BASE_URL: ${GEMINI_BASE_URL:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_MODEL: ${ELEVENLABS_MODEL:-eleven_flash_v2_5}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-}
     ports:
       - "8000:8000"
     depends_on:

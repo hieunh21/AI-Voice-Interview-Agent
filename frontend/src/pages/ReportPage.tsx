@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { api } from '../api'
 import type { CriterionScore, EvaluationResult, SessionView } from '../api/types'
-import { Badge, Card, Notice, ScoreBadge, ScoreBar, Spinner } from '../components/ui'
+import { Badge, Button, Card, Notice, ScoreBadge, ScoreBar, Spinner } from '../components/ui'
+import { errorMessage } from '../lib/errors'
 import {
   CRITERION_LABELS,
   CROSS_CUTTING_LABELS,
@@ -19,20 +21,67 @@ const loadReport = async (id: string) => {
   return { session, report }
 }
 
+const POLL_MS = 2000
+
 export default function ReportPage() {
   const { id = '' } = useParams()
-  const { data, error, loading } = useLoader(id, loadReport)
+  const { data, error, loading, setData } = useLoader(id, loadReport)
+  const [retrying, setRetrying] = useState(false)
+  const [retryError, setRetryError] = useState<string | null>(null)
+  const status = data?.report.status
+
+  // Evaluation runs in the background: refresh until it completes or fails.
+  useEffect(() => {
+    if (status !== 'pending' && status !== 'processing') return
+    const timer = window.setTimeout(() => {
+      loadReport(id).then(setData, () => {
+        // keep showing the last state; the next render retries
+      })
+    }, POLL_MS)
+    return () => window.clearTimeout(timer)
+  }, [data, id, setData, status])
+
+  async function retry() {
+    setRetrying(true)
+    setRetryError(null)
+    try {
+      await api.retryReport(id)
+      setData(await loadReport(id))
+    } catch (err) {
+      setRetryError(errorMessage(err))
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   if (loading) return <Spinner label="Đang tải báo cáo…" />
   if (error || !data) return <Notice title="Không mở được báo cáo">{error}</Notice>
 
   const { session, report: response } = data
   const report = response.report
+  if (response.status === 'failed') {
+    return (
+      <Card className="space-y-4">
+        <h1 className="text-xl font-semibold">Chưa chấm điểm được buổi phỏng vấn này</h1>
+        <p className="text-sm text-slate-600">
+          Dịch vụ AI có thể đang quá tải. Transcript của bạn vẫn được lưu đầy đủ; hãy thử chấm lại.
+        </p>
+        {retryError && <Notice title="Không thử lại được">{retryError}</Notice>}
+        <Button onClick={retry} disabled={retrying}>
+          {retrying ? 'Đang gửi yêu cầu…' : 'Chấm lại'}
+        </Button>
+      </Card>
+    )
+  }
   if (response.status !== 'completed' || !report) {
     return (
-      <Notice title={REPORT_STATUS_LABELS[response.status]} tone="sky">
-        Báo cáo sẽ hiển thị khi chấm điểm xong.
-      </Notice>
+      <Card className="text-center">
+        <Spinner label={`${REPORT_STATUS_LABELS[response.status]}…`} />
+        <p className="text-sm text-slate-500">
+          AI đang chấm từng câu theo rubric và kiểm tra trích dẫn từ transcript. Thường mất dưới
+          một phút; trang sẽ tự cập nhật.
+        </p>
+      </Card>
     )
   }
 
@@ -144,6 +193,7 @@ export default function ReportPage() {
 
       <p className="text-xs text-slate-400">
         Rubric v{report.versions.rubric} · Evaluator prompt v{report.versions.evaluator_prompt}
+        {report.versions.evaluator_model && ` · ${report.versions.evaluator_model}`}
       </p>
     </div>
   )

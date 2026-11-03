@@ -8,8 +8,11 @@ adaptive follow-up questions and produces an evidence-linked feedback report.
 > playbook selection, a LangGraph planner (Gemini, with a seed-only fallback) that produces a
 > frozen, versioned interview plan, and an adaptive **text** interview: a LangGraph interviewer
 > that follows up on what the candidate actually said, within backend-enforced limits, with
-> idempotent answers and resume after refresh. In progress: Vietnamese voice and the
-> evidence-based report. Design rationale: [`docs/decisions.md`](docs/decisions.md).
+> idempotent answers and resume after refresh — by text or **turn-based voice** (record → editable
+> transcript via Gemini → questions read aloud by ElevenLabs or the browser voice) — and an
+> **evidence-based report**: every score cites verified quotes from the transcript, scored against
+> the frozen rubric, aggregated deterministically. Next: benchmark, A/B study and deployment.
+> Design rationale: [`docs/decisions.md`](docs/decisions.md).
 
 ## Scope
 
@@ -59,7 +62,9 @@ ai/
   live_rules.py           backend-enforced interview limits
   llm/                    structured-output LLM interface, Gemini adapter, fake
   prompts/                versioned prompts
+  evaluation/             evaluator (per thread, cross-cutting, summary) + evidence checker
   scoring.py              deterministic score aggregation
+speech/                   STT (Gemini) / TTS (ElevenLabs + cache) adapters, audio validation
 backend/
   app/                    FastAPI app (config, runtime, api, services, models, schemas)
   alembic/                migrations
@@ -90,6 +95,8 @@ Or run PostgreSQL + backend together with `docker compose up --build`. Without `
 the app still works: plans are built from the reviewed question seeds, without CV/JD analysis.
 `GEMINI_MODEL` selects the model (e.g. `gemini-2.5-flash`); `GEMINI_BASE_URL` routes requests
 through a Gemini-compatible gateway — CV/JD text is then processed by that provider as well.
+Voice: speech-to-text reuses the Gemini settings; set `ELEVENLABS_API_KEY` and
+`ELEVENLABS_VOICE_ID` to read questions with ElevenLabs (otherwise the browser voice is used).
 Set `VITE_API_MODE=mock` in `frontend/.env.local` to run the UI without a backend.
 
 | Endpoint | Purpose |
@@ -101,7 +108,12 @@ Set `VITE_API_MODE=mock` in `frontend/.env.local` to run the UI without a backen
 | `POST /api/interviews/{id}/prepare` | Build and freeze the interview plan (idempotent) |
 | `POST /api/interviews/{id}/start` | Start a prepared session; returns the first question (idempotent) |
 | `POST /api/interviews/{id}/answer` | `{request_id, turn_no, answer_text}` → follow-up, next question or end |
-| `POST /api/interviews/{id}/finish` | End early; answered turns are kept (idempotent) |
+| `POST /api/interviews/{id}/finish` | End early; answered turns are kept and evaluated (idempotent) |
+| `GET /api/interviews/{id}/report` | Report status (`pending/processing/completed/failed`) and the report |
+| `POST /api/interviews/{id}/report/retry` | Re-run a failed evaluation (never creates a second report) |
+| `POST /api/interviews/{id}/transcribe` | Recorded answer (WAV ≤ 3 min) → editable transcript; audio is not stored |
+| `GET /api/interviews/{id}/turns/{n}/audio` | Question `n` read aloud (audio/mpeg); only this session's questions |
+| `GET /api/speech/capabilities` | Which voice features are configured (UI falls back to text / browser voice) |
 | `GET /api/interviews`, `GET /api/interviews/{id}` | List sessions / session with plan preview and turns |
 | `DELETE /api/interviews/{id}` | Delete a session with its documents, plan and transcript |
 | `GET /docs` | OpenAPI UI (disabled in production) |

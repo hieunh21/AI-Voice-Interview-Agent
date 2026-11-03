@@ -16,6 +16,7 @@ COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY ai ./ai
+COPY speech ./speech
 COPY backend ./backend
 RUN uv sync --frozen --no-dev --no-editable
 
