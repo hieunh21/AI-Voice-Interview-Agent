@@ -1,0 +1,58 @@
+{
+  "session": {
+    "id": "6f3b8c1e-2a4d-4e8f-9b1a-1c2d3e4f5a04",
+    "role": "ai_engineer",
+    "level": "junior",
+    "mode": "standard",
+    "status": "ready",
+    "has_cv": true,
+    "has_jd": true,
+    "created_at": "2026-11-03T10:00:00Z",
+    "started_at": null,
+    "ended_at": null,
+    "end_reason": null,
+    "plan_preview": {
+      "role_playbook": { "id": "role_ai_engineer", "version": "1.0.0" },
+      "skills": [
+        {
+          "id": "rag_systems",
+          "title": "RAG Systems",
+          "version": "1.0.0",
+          "is_core": true,
+          "target_questions": 2
+        },
+        {
+          "id": "llm_agents",
+          "title": "LLM Agents",
+          "version": "1.0.0",
+          "is_core": true,
+          "target_questions": 2
+        },
+        {
+          "id": "model_evaluation",
+          "title": "Model Evaluation",
+          "version": "1.0.0",
+          "is_core": false,
+          "target_questions": 1
+        },
+        {
+          "id": "api_design",
+          "title": "API Design",
+          "version": "1.0.0",
+          "is_core": false,
+          "target_questions": 1
+        }
+      ],
+      "main_questions": 6,
+      "max_turns": 15,
+      "time_budget_minutes": 30,
+      "input_sources": ["role_config", "role_playbook", "competency_skills", "cv", "jd"],
+      "warnings": [
+        "JD yêu cầu Kubernetes — kỹ năng này nằm ngoài phạm vi được hỗ trợ nên sẽ không có câu hỏi riêng."
+      ]
+    },
+    "turns": [],
+    "report_status": null
+  },
+  "report": null
+}

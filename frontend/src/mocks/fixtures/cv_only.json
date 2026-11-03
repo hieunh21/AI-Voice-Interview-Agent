@@ -1,0 +1,339 @@
+{
+  "session": {
+    "id": "6f3b8c1e-2a4d-4e8f-9b1a-1c2d3e4f5a02",
+    "role": "backend_developer",
+    "level": "junior",
+    "mode": "demo",
+    "status": "completed",
+    "has_cv": true,
+    "has_jd": false,
+    "created_at": "2026-11-02T14:00:00Z",
+    "started_at": "2026-11-02T14:01:00Z",
+    "ended_at": "2026-11-02T14:12:00Z",
+    "end_reason": "plan_completed",
+    "plan_preview": {
+      "role_playbook": { "id": "role_backend_developer", "version": "1.0.0" },
+      "skills": [
+        {
+          "id": "databases",
+          "title": "Databases",
+          "version": "1.0.0",
+          "is_core": true,
+          "target_questions": 1
+        },
+        {
+          "id": "system_design",
+          "title": "System Design",
+          "version": "1.0.0",
+          "is_core": true,
+          "target_questions": 1
+        },
+        {
+          "id": "api_design",
+          "title": "API Design",
+          "version": "1.0.0",
+          "is_core": false,
+          "target_questions": 1
+        }
+      ],
+      "main_questions": 3,
+      "max_turns": 6,
+      "time_budget_minutes": 12,
+      "input_sources": ["role_config", "role_playbook", "competency_skills", "cv"],
+      "warnings": []
+    },
+    "turns": [
+      {
+        "turn_no": 1,
+        "question_id": "q_001",
+        "parent_question_id": null,
+        "kind": "main",
+        "skill_id": "databases",
+        "question_text": "Trong CV, bạn có dự án hệ thống đặt lịch khám bệnh dùng FastAPI và PostgreSQL. Bạn xử lý thế nào khi hai người cùng đặt một khung giờ?",
+        "answer_text": "Em đặt unique constraint trên cặp bác sĩ và khung giờ trong bảng appointments, và insert trong một transaction. Nếu hai request cùng lúc thì request sau bị lỗi unique violation, nên không thể có hai lịch trùng. Trước đó em từng thử kiểm tra bằng SELECT rồi mới INSERT nhưng vẫn bị trùng khi test tải với Locust, vì hai request cùng đọc thấy khung giờ còn trống.",
+        "asked_at": "2026-11-02T14:01:05Z",
+        "answered_at": "2026-11-02T14:03:00Z"
+      },
+      {
+        "turn_no": 2,
+        "question_id": "q_001.f1",
+        "parent_question_id": "q_001",
+        "kind": "follow_up",
+        "skill_id": "databases",
+        "question_text": "Bạn nói request sau sẽ gặp lỗi unique violation. Khi đó API trả về gì cho client, và client nên xử lý ra sao?",
+        "answer_text": "API bắt IntegrityError rồi trả về 409 Conflict kèm thông báo khung giờ đã có người đặt, client hiển thị và tải lại danh sách khung giờ trống. Em không trả 500 vì đây là lỗi nghiệp vụ dự đoán được.",
+        "asked_at": "2026-11-02T14:03:05Z",
+        "answered_at": "2026-11-02T14:04:10Z"
+      },
+      {
+        "turn_no": 3,
+        "question_id": "q_002",
+        "parent_question_id": null,
+        "kind": "main",
+        "skill_id": "system_design",
+        "question_text": "Vào giờ cao điểm, API đặt lịch phản hồi chậm. Bạn sẽ tìm nguyên nhân và cải thiện thế nào?",
+        "answer_text": "Ờ thì cái đó em sẽ... (không nghe rõ) ... cache ờ.",
+        "asked_at": "2026-11-02T14:04:15Z",
+        "answered_at": "2026-11-02T14:05:00Z"
+      },
+      {
+        "turn_no": 4,
+        "question_id": "q_003",
+        "parent_question_id": null,
+        "kind": "main",
+        "skill_id": "api_design",
+        "question_text": "Bạn thiết kế API trả về danh sách lịch hẹn thế nào khi dữ liệu rất lớn?",
+        "answer_text": "Em sẽ phân trang. Dùng limit và offset thì đơn giản nhưng offset lớn sẽ chậm vì database vẫn phải quét qua các dòng bị bỏ qua, nên với dữ liệu lớn em dùng cursor-based pagination theo cột thời gian và id. API trả về next_cursor để client gọi trang tiếp.",
+        "asked_at": "2026-11-02T14:05:05Z",
+        "answered_at": "2026-11-02T14:06:30Z"
+      }
+    ],
+    "report_status": "completed"
+  },
+  "report": {
+    "session_id": "6f3b8c1e-2a4d-4e8f-9b1a-1c2d3e4f5a02",
+    "role": "backend_developer",
+    "level": "junior",
+    "mode": "demo",
+    "overall_score": 3.81,
+    "skill_scores": [
+      {
+        "skill_id": "databases",
+        "skill_version": "1.0.0",
+        "score": 4.15,
+        "question_ids": ["q_001"],
+        "summary": "Hiểu race condition và dùng ràng buộc của database để bảo đảm tính đúng."
+      },
+      {
+        "skill_id": "system_design",
+        "skill_version": "1.0.0",
+        "score": null,
+        "question_ids": ["q_002"],
+        "summary": "Không đủ bằng chứng để đánh giá — transcript bị nhận dạng không rõ."
+      },
+      {
+        "skill_id": "api_design",
+        "skill_version": "1.0.0",
+        "score": 3.4,
+        "question_ids": ["q_003"],
+        "summary": "Biết trade-off giữa offset và cursor pagination."
+      }
+    ],
+    "cross_cutting": [
+      {
+        "skill_id": "communication",
+        "skill_version": "1.0.0",
+        "criteria": [
+          {
+            "criterion_id": "clarity",
+            "score": 4,
+            "rationale": "Giải thích quyết định kèm lý do ngắn gọn.",
+            "evidence": [
+              { "turn_no": 2, "quote": "Em không trả 500 vì đây là lỗi nghiệp vụ dự đoán được" }
+            ]
+          },
+          {
+            "criterion_id": "structure",
+            "score": 4,
+            "rationale": "Nêu kết luận trước rồi mới so sánh phương án.",
+            "evidence": [{ "turn_no": 4, "quote": "Em sẽ phân trang." }]
+          }
+        ],
+        "summary": "Trả lời mạch lạc khi transcript rõ ràng."
+      },
+      {
+        "skill_id": "problem_solving",
+        "skill_version": "1.0.0",
+        "criteria": [
+          {
+            "criterion_id": "decomposition",
+            "score": 4,
+            "rationale": "Mô tả được cách đã thử, lý do thất bại và cách sửa.",
+            "evidence": [
+              {
+                "turn_no": 1,
+                "quote": "Trước đó em từng thử kiểm tra bằng SELECT rồi mới INSERT"
+              }
+            ]
+          },
+          {
+            "criterion_id": "handling_uncertainty",
+            "score": null,
+            "rationale": "Không có tình huống đủ rõ để đánh giá (câu 2 bị nhận dạng giọng nói không rõ).",
+            "evidence": []
+          }
+        ],
+        "summary": "Có tư duy thử nghiệm và rút kinh nghiệm từ lỗi thực tế."
+      }
+    ],
+    "questions": [
+      {
+        "question_id": "q_001",
+        "skill_id": "databases",
+        "skill_version": "1.0.0",
+        "status": "scored",
+        "turn_nos": [1, 2],
+        "weighted_score": 4.15,
+        "criteria": [
+          {
+            "criterion_id": "technical_accuracy",
+            "score": 4,
+            "rationale": "Dùng unique constraint trong transaction là cách đúng để chặn đặt trùng.",
+            "evidence": [
+              {
+                "turn_no": 1,
+                "quote": "Em đặt unique constraint trên cặp bác sĩ và khung giờ"
+              }
+            ]
+          },
+          {
+            "criterion_id": "completeness",
+            "score": 4,
+            "rationale": "Bao quát cả phía database và cách API phản hồi lỗi.",
+            "evidence": [{ "turn_no": 2, "quote": "trả về 409 Conflict" }]
+          },
+          {
+            "criterion_id": "reasoning",
+            "score": 4,
+            "rationale": "Giải thích đúng vì sao kiểm tra rồi mới ghi vẫn bị trùng.",
+            "evidence": [
+              { "turn_no": 1, "quote": "vì hai request cùng đọc thấy khung giờ còn trống" }
+            ]
+          },
+          {
+            "criterion_id": "practical_examples",
+            "score": 5,
+            "rationale": "Ví dụ thực tế có kiểm chứng bằng test tải.",
+            "evidence": [
+              { "turn_no": 1, "quote": "vẫn bị trùng khi test tải với Locust" }
+            ]
+          }
+        ],
+        "covered_points": [
+          "Race condition khi kiểm tra rồi mới ghi",
+          "Unique constraint trong transaction",
+          "Trả lỗi 409 cho client"
+        ],
+        "missed_points": ["Khóa hàng (SELECT ... FOR UPDATE) hoặc mức isolation như phương án thay thế"],
+        "strengths": ["Kinh nghiệm thật, có kiểm chứng bằng test tải"],
+        "gaps": ["Chưa so sánh với các cách khóa khác"],
+        "improvement_suggestion": "Nêu thêm các phương án khác (khóa hàng, isolation level) và vì sao chọn unique constraint — đây là điểm ăn tiền ở level Junior."
+      },
+      {
+        "question_id": "q_002",
+        "skill_id": "system_design",
+        "skill_version": "1.0.0",
+        "status": "insufficient_evidence",
+        "turn_nos": [3],
+        "weighted_score": null,
+        "criteria": [
+          {
+            "criterion_id": "technical_accuracy",
+            "score": null,
+            "rationale": "Transcript không đủ nội dung để đánh giá.",
+            "evidence": []
+          },
+          {
+            "criterion_id": "completeness",
+            "score": null,
+            "rationale": "Transcript không đủ nội dung để đánh giá.",
+            "evidence": []
+          },
+          {
+            "criterion_id": "reasoning",
+            "score": null,
+            "rationale": "Transcript không đủ nội dung để đánh giá.",
+            "evidence": []
+          },
+          {
+            "criterion_id": "practical_examples",
+            "score": null,
+            "rationale": "Transcript không đủ nội dung để đánh giá.",
+            "evidence": []
+          }
+        ],
+        "covered_points": [],
+        "missed_points": [],
+        "strengths": [],
+        "gaps": [],
+        "improvement_suggestion": "Câu trả lời có vẻ bị nhận dạng giọng nói sai. Hãy kiểm tra và sửa transcript trước khi gửi; với câu hỏi hiệu năng, nêu hướng tiếp cận: đo latency từng bước, tìm truy vấn chậm, rồi mới tối ưu."
+      },
+      {
+        "question_id": "q_003",
+        "skill_id": "api_design",
+        "skill_version": "1.0.0",
+        "status": "scored",
+        "turn_nos": [4],
+        "weighted_score": 3.4,
+        "criteria": [
+          {
+            "criterion_id": "technical_accuracy",
+            "score": 4,
+            "rationale": "Giải thích đúng vì sao offset lớn bị chậm.",
+            "evidence": [
+              {
+                "turn_no": 4,
+                "quote": "offset lớn sẽ chậm vì database vẫn phải quét qua các dòng bị bỏ qua"
+              }
+            ]
+          },
+          {
+            "criterion_id": "completeness",
+            "score": 3,
+            "rationale": "Thiếu index hỗ trợ cursor và giới hạn kích thước trang.",
+            "evidence": [
+              {
+                "turn_no": 4,
+                "quote": "dùng cursor-based pagination theo cột thời gian và id"
+              }
+            ]
+          },
+          {
+            "criterion_id": "reasoning",
+            "score": 3,
+            "rationale": "Có so sánh hai phương án nhưng chưa nêu nhược điểm của cursor.",
+            "evidence": [
+              {
+                "turn_no": 4,
+                "quote": "Dùng limit và offset thì đơn giản nhưng offset lớn sẽ chậm"
+              }
+            ]
+          },
+          {
+            "criterion_id": "practical_examples",
+            "score": 3,
+            "rationale": "Mô tả được hợp đồng API cụ thể.",
+            "evidence": [
+              { "turn_no": 4, "quote": "API trả về next_cursor để client gọi trang tiếp" }
+            ]
+          }
+        ],
+        "covered_points": ["Offset và cursor pagination", "Trả về next_cursor"],
+        "missed_points": [
+          "Index trên các cột dùng làm cursor",
+          "Giới hạn kích thước trang tối đa",
+          "Cursor không nhảy được tới trang bất kỳ"
+        ],
+        "strengths": ["Hiểu nguyên nhân hiệu năng của offset"],
+        "gaps": ["Chưa nói tới index và giới hạn trang"],
+        "improvement_suggestion": "Bổ sung index cho cột cursor, giới hạn page size và nêu nhược điểm của cursor (không nhảy trang) để câu trả lời cân bằng hơn."
+      }
+    ],
+    "top_strengths": [
+      "Kinh nghiệm dự án thật với vấn đề concurrency",
+      "Hiểu trade-off phân trang"
+    ],
+    "priority_improvements": [
+      "Luyện câu hỏi hiệu năng hệ thống theo quy trình đo trước, tối ưu sau",
+      "Kiểm tra transcript trước khi gửi khi dùng giọng nói"
+    ],
+    "study_topics": [
+      "SELECT ... FOR UPDATE và isolation level",
+      "Profiling truy vấn chậm (EXPLAIN ANALYZE)",
+      "Caching và cache invalidation"
+    ],
+    "versions": { "rubric": "1.0.0", "evaluator_prompt": "1.0.0" },
+    "disclaimer": "Đây là công cụ luyện tập. Kết quả không phải đánh giá tuyển dụng chính thức và chỉ dựa trên nội dung transcript bạn đã xác nhận.",
+    "generated_at": "2026-11-02T14:12:40Z"
+  }
+}

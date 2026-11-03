@@ -1,0 +1,107 @@
+# Shared rubric criteria with behaviourally anchored 1–5 scales.
+# Skills choose criteria + weights in their `## Scoring Rubric` section; anchors are defined once here
+# so scoring means the same thing across skills. The whole definition is frozen into every
+# InterviewPlan, so editing this file never changes the scoring of an existing session.
+#
+# All anchors are relative to the TARGET LEVEL of the session: a "5" for an intern means
+# "fully meets intern expectations", not "senior-level answer".
+# Bump `version` on any change to names, anchors or applies_to.
+
+version: 1.0.0
+
+criteria:
+  # ---- Per-question criteria (assessment: question) ----
+  technical_accuracy:
+    name: Độ chính xác kỹ thuật
+    applies_to: question
+    description: Nội dung kỹ thuật đúng, dùng thuật ngữ chính xác, so với kỳ vọng của level.
+    anchors:
+      1: Sai ở khái niệm cốt lõi, hoặc không đưa ra nội dung kỹ thuật nào.
+      2: Có ý đúng nhưng kèm sai sót quan trọng hoặc nhầm lẫn khái niệm.
+      3: Phần lớn đúng; có sai sót nhỏ hoặc diễn đạt mơ hồ nhưng không sai bản chất.
+      4: Đúng và dùng thuật ngữ chính xác; chỉ thiếu độ sắc nét ở chi tiết nâng cao.
+      5: Chính xác hoàn toàn, nêu được điều kiện hoặc giới hạn áp dụng của kiến thức.
+
+  completeness:
+    name: Độ đầy đủ ý chính
+    applies_to: question
+    description: >-
+      Mức độ bao phủ expected points của câu hỏi. Cách diễn đạt tương đương được tính;
+      ý đúng ngoài danh sách không bị trừ điểm.
+    anchors:
+      1: Không nêu được expected point nào.
+      2: Nêu được ít hơn khoảng một phần ba expected points.
+      3: Nêu được khoảng một nửa expected points, thiếu vài ý quan trọng.
+      4: Nêu được phần lớn expected points, chỉ thiếu ý phụ.
+      5: Bao quát đủ expected points.
+
+  reasoning:
+    name: Lập luận và giải thích
+    applies_to: question
+    description: Giải thích được "vì sao", so sánh phương án và nêu trade-off.
+    anchors:
+      1: Chỉ liệt kê tên gọi hoặc khẳng định mà không có lý do.
+      2: Có giải thích nhưng rời rạc, khó theo dõi, hoặc có bước suy luận sai.
+      3: Giải thích được lý do ở mức cơ bản, nêu được ít nhất một trade-off hoặc điều kiện.
+      4: Lập luận mạch lạc, so sánh phương án và nêu trade-off rõ ràng.
+      5: Lập luận chặt chẽ — nêu giả định, so sánh theo tiêu chí cụ thể, chỉ ra khi nào lựa chọn không còn đúng.
+
+  practical_examples:
+    name: Ví dụ thực tế
+    applies_to: question
+    description: >-
+      Minh họa bằng ví dụ cụ thể. Với Intern/Fresher, ví dụ từ đồ án, bài tập hoặc dự án cá nhân
+      được tính tương đương kinh nghiệm đi làm.
+    anchors:
+      1: Không có ví dụ, hoặc ví dụ không liên quan.
+      2: Ví dụ chung chung, không gắn với tình huống cụ thể.
+      3: Có ví dụ cụ thể (đồ án, bài tập hoặc tình huống giả định hợp lý) minh họa được ý chính.
+      4: Ví dụ cụ thể từ việc đã làm, nêu được cách làm.
+      5: Ví dụ cụ thể kèm kết quả đo được, vấn đề đã gặp và bài học rút ra.
+
+  # ---- Session-level criteria (assessment: cross_cutting) ----
+  clarity:
+    name: Diễn đạt rõ ràng
+    applies_to: cross_cutting
+    description: >-
+      Chỉ chấm nội dung transcript đã xác nhận. Không chấm giọng nói, accent, tốc độ nói
+      hay lỗi nhận dạng giọng nói.
+    anchors:
+      1: Khó hiểu, nhiều ý mâu thuẫn hoặc lạc đề.
+      2: Hiểu được ý chính nhưng lan man, dùng thuật ngữ thiếu chính xác.
+      3: Dễ hiểu; đôi chỗ lan man hoặc lặp ý.
+      4: Rõ ràng, súc tích, dùng thuật ngữ đúng chỗ.
+      5: Rất rõ ràng; điều chỉnh mức chi tiết theo câu hỏi, giải thích khái niệm khó bằng lời đơn giản.
+
+  structure:
+    name: Cấu trúc câu trả lời
+    applies_to: cross_cutting
+    description: Câu trả lời có bố cục, đi đúng trọng tâm câu hỏi.
+    anchors:
+      1: Không có cấu trúc, nhảy ý liên tục.
+      2: Có ý chính nhưng thứ tự lộn xộn.
+      3: Có cấu trúc cơ bản (ý chính rồi giải thích).
+      4: Bố cục rõ — kết luận trước, sau đó giải thích và ví dụ.
+      5: Bố cục rõ và nhất quán qua các câu, trả lời đúng trọng tâm và tóm tắt khi phù hợp.
+
+  decomposition:
+    name: Phân rã vấn đề
+    applies_to: cross_cutting
+    description: Cách tiếp cận bài toán mở hoặc tình huống chưa rõ ràng.
+    anchors:
+      1: Nhảy thẳng tới giải pháp hoặc bỏ cuộc, không phân tích bài toán.
+      2: Phân tích hời hợt, bỏ qua ràng buộc quan trọng.
+      3: Chia bài toán thành các bước hợp lý, nêu được ràng buộc chính.
+      4: Làm rõ yêu cầu và giả định trước khi giải, xem xét phương án thay thế.
+      5: Phân rã có hệ thống, nêu tiêu chí đánh giá, rủi ro, edge case và cách kiểm chứng.
+
+  handling_uncertainty:
+    name: Xử lý khi chưa chắc chắn
+    applies_to: cross_cutting
+    description: Cách ứng viên phản ứng khi gặp câu hỏi vượt quá hiểu biết của mình.
+    anchors:
+      1: Bịa thông tin hoặc khẳng định chắc chắn điều sai.
+      2: Bỏ qua khi không biết, không cố suy luận.
+      3: Thừa nhận phần chưa biết, có cố suy luận nhưng chưa rõ ràng.
+      4: Thừa nhận giới hạn, suy luận từ nguyên lý đã biết và nói rõ đâu là phỏng đoán.
+      5: Phân biệt rõ điều chắc chắn và phỏng đoán, đề xuất cách kiểm chứng hoặc tìm hiểu thêm.

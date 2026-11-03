@@ -1,0 +1,38 @@
+# Local development: `docker compose up -d db` for PostgreSQL only (backend via uv on the host),
+# or `docker compose up --build` for PostgreSQL + backend. The frontend runs with `npm run dev`.
+name: intervai
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-intervai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-intervai}
+      POSTGRES_DB: ${POSTGRES_DB:-intervai}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/backend.Dockerfile
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-intervai}:${POSTGRES_PASSWORD:-intervai}@db:5432/${POSTGRES_DB:-intervai}
+      CORS_ORIGINS: http://localhost:5173
+      ALLOW_DRAFT_PLAYBOOKS: "true"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

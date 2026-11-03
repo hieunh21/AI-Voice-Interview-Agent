@@ -1,0 +1,70 @@
+"""Typed, validated settings. The app refuses to start when the environment is invalid."""
+
+from functools import lru_cache
+from typing import Annotated, Literal, Self
+
+from pydantic import SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+_ASYNC_SCHEME = "postgresql+asyncpg://"
+_PLAIN_SCHEMES = ("postgres://", "postgresql://")
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    app_env: Literal["development", "test", "production"] = "development"
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    database_url: str
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+    allow_draft_playbooks: bool = False
+    gemini_api_key: SecretStr | None = None
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalise_database_url(cls, value: str) -> str:
+        """Accept the plain URLs that managed Postgres providers hand out."""
+        value = value.strip()
+        for scheme in _PLAIN_SCHEMES:
+            if value.startswith(scheme):
+                return _ASYNC_SCHEME + value.removeprefix(scheme)
+        if not value.startswith(_ASYNC_SCHEME):
+            raise ValueError("DATABASE_URL must be a PostgreSQL URL (postgresql+asyncpg://...)")
+        return value
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+        return value
+
+    @field_validator("gemini_api_key", mode="before")
+    @classmethod
+    def _empty_key_is_none(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @model_validator(mode="after")
+    def _production_rules(self) -> Self:
+        if self.app_env != "production":
+            return self
+        problems: list[str] = []
+        if self.allow_draft_playbooks:
+            problems.append("ALLOW_DRAFT_PLAYBOOKS must be false in production")
+        if not self.cors_origins or "*" in self.cors_origins:
+            problems.append("CORS_ORIGINS must list explicit origins in production")
+        insecure = [o for o in self.cors_origins if not o.startswith("https://")]
+        if insecure:
+            problems.append(f"CORS_ORIGINS must use https in production: {insecure}")
+        if problems:
+            raise ValueError("; ".join(problems))
+        return self
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env == "production"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()  # type: ignore[call-arg]  # values come from the environment

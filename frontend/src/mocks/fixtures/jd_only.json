@@ -1,0 +1,83 @@
+{
+  "session": {
+    "id": "6f3b8c1e-2a4d-4e8f-9b1a-1c2d3e4f5a03",
+    "role": "data_engineer",
+    "level": "fresher",
+    "mode": "standard",
+    "status": "in_progress",
+    "has_cv": false,
+    "has_jd": true,
+    "created_at": "2026-11-03T08:30:00Z",
+    "started_at": "2026-11-03T08:31:00Z",
+    "ended_at": null,
+    "end_reason": null,
+    "plan_preview": {
+      "role_playbook": { "id": "role_data_engineer", "version": "1.0.0" },
+      "skills": [
+        {
+          "id": "sql",
+          "title": "SQL",
+          "version": "1.0.0",
+          "is_core": true,
+          "target_questions": 2
+        },
+        {
+          "id": "etl_pipeline",
+          "title": "ETL Pipeline",
+          "version": "1.0.0",
+          "is_core": true,
+          "target_questions": 2
+        },
+        {
+          "id": "data_processing",
+          "title": "Data Processing",
+          "version": "1.0.0",
+          "is_core": false,
+          "target_questions": 2
+        }
+      ],
+      "main_questions": 6,
+      "max_turns": 15,
+      "time_budget_minutes": 30,
+      "input_sources": ["role_config", "role_playbook", "competency_skills", "jd"],
+      "warnings": []
+    },
+    "turns": [
+      {
+        "turn_no": 1,
+        "question_id": "q_001",
+        "parent_question_id": null,
+        "kind": "main",
+        "skill_id": "sql",
+        "question_text": "Phân biệt WHERE và HAVING trong SQL, và cho một ví dụ cần dùng HAVING.",
+        "answer_text": "WHERE lọc từng dòng trước khi gom nhóm, còn HAVING lọc sau khi GROUP BY dựa trên giá trị tổng hợp. Ví dụ tìm các khách hàng có tổng đơn hàng trên 10 triệu thì phải GROUP BY customer_id rồi HAVING SUM(amount) > 10000000.",
+        "asked_at": "2026-11-03T08:31:05Z",
+        "answered_at": "2026-11-03T08:32:30Z"
+      },
+      {
+        "turn_no": 2,
+        "question_id": "q_001.f1",
+        "parent_question_id": "q_001",
+        "kind": "follow_up",
+        "skill_id": "sql",
+        "question_text": "Với truy vấn đó, nếu chỉ cần xét các đơn hàng trong năm 2026 thì bạn đặt điều kiện thời gian ở WHERE hay HAVING, và vì sao?",
+        "answer_text": "Đặt ở WHERE, vì lọc bớt dòng trước khi gom nhóm thì database xử lý ít dữ liệu hơn, và điều kiện này áp dụng cho từng đơn chứ không phải cho nhóm.",
+        "asked_at": "2026-11-03T08:32:35Z",
+        "answered_at": "2026-11-03T08:33:40Z"
+      },
+      {
+        "turn_no": 3,
+        "question_id": "q_002",
+        "parent_question_id": null,
+        "kind": "main",
+        "skill_id": "etl_pipeline",
+        "question_text": "JD yêu cầu xây dựng pipeline nạp dữ liệu hằng ngày. Nếu job chạy lại sau khi lỗi giữa chừng, bạn làm thế nào để dữ liệu không bị trùng?",
+        "answer_text": null,
+        "asked_at": "2026-11-03T08:33:45Z",
+        "answered_at": null
+      }
+    ],
+    "report_status": null
+  },
+  "report": null
+}

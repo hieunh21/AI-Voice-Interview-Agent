@@ -1,0 +1,372 @@
+{
+  "session": {
+    "id": "6f3b8c1e-2a4d-4e8f-9b1a-1c2d3e4f5a01",
+    "role": "ai_engineer",
+    "level": "fresher",
+    "mode": "demo",
+    "status": "completed",
+    "has_cv": false,
+    "has_jd": false,
+    "created_at": "2026-11-01T09:00:00Z",
+    "started_at": "2026-11-01T09:01:00Z",
+    "ended_at": "2026-11-01T09:14:30Z",
+    "end_reason": "plan_completed",
+    "plan_preview": {
+      "role_playbook": { "id": "role_ai_engineer", "version": "1.0.0" },
+      "skills": [
+        {
+          "id": "machine_learning",
+          "title": "Machine Learning",
+          "version": "1.0.0",
+          "is_core": true,
+          "target_questions": 1
+        },
+        {
+          "id": "rag_systems",
+          "title": "RAG Systems",
+          "version": "1.0.0",
+          "is_core": true,
+          "target_questions": 2
+        }
+      ],
+      "main_questions": 3,
+      "max_turns": 6,
+      "time_budget_minutes": 12,
+      "input_sources": ["role_config", "role_playbook", "competency_skills"],
+      "warnings": []
+    },
+    "turns": [
+      {
+        "turn_no": 1,
+        "question_id": "q_001",
+        "parent_question_id": null,
+        "kind": "main",
+        "skill_id": "machine_learning",
+        "question_text": "Overfitting là gì, và trong một bài toán phân loại bạn phát hiện nó bằng cách nào?",
+        "answer_text": "Overfitting là khi mô hình học thuộc dữ liệu huấn luyện, kể cả nhiễu, nên điểm trên tập train rất cao nhưng trên dữ liệu mới lại kém. Em phát hiện bằng cách chia tập train và validation rồi so sánh loss hoặc accuracy giữa hai tập; nếu train tiếp tục tốt lên mà validation xấu đi thì là overfitting. Trong đồ án phân loại bình luận, em dùng early stopping và dropout để giảm.",
+        "asked_at": "2026-11-01T09:01:05Z",
+        "answered_at": "2026-11-01T09:02:40Z"
+      },
+      {
+        "turn_no": 2,
+        "question_id": "q_001.f1",
+        "parent_question_id": "q_001",
+        "kind": "follow_up",
+        "skill_id": "machine_learning",
+        "question_text": "Bạn có nhắc đến việc chia train và validation. Nếu bộ dữ liệu chỉ có khoảng 800 mẫu, bạn chia thế nào để kết quả đánh giá đáng tin hơn?",
+        "answer_text": "Với dữ liệu ít em sẽ dùng k-fold cross-validation, ví dụ 5-fold, để mỗi mẫu đều được dùng để đánh giá một lần rồi lấy trung bình. Nếu các lớp bị lệch thì em dùng stratified để giữ tỉ lệ lớp trong mỗi fold. Tập test vẫn phải để riêng, không dùng để chọn siêu tham số.",
+        "asked_at": "2026-11-01T09:02:45Z",
+        "answered_at": "2026-11-01T09:04:10Z"
+      },
+      {
+        "turn_no": 3,
+        "question_id": "q_002",
+        "parent_question_id": null,
+        "kind": "main",
+        "skill_id": "rag_systems",
+        "question_text": "Tìm kiếm theo từ khóa và tìm kiếm theo embedding khác nhau thế nào khi xây dựng hệ thống RAG?",
+        "answer_text": "Tìm theo embedding thì chuyển câu hỏi và tài liệu thành vector rồi so cosine similarity, nên tìm được những đoạn có cùng ý dù dùng từ khác. Tìm theo từ khóa thì chỉ khớp đúng từ nên kém hơn, em nghĩ dùng embedding là đủ cho hầu hết trường hợp.",
+        "asked_at": "2026-11-01T09:04:15Z",
+        "answered_at": "2026-11-01T09:05:30Z"
+      },
+      {
+        "turn_no": 4,
+        "question_id": "q_002.f1",
+        "parent_question_id": "q_002",
+        "kind": "follow_up",
+        "skill_id": "rag_systems",
+        "question_text": "Bạn cho rằng dùng embedding là đủ cho hầu hết trường hợp. Nếu người dùng tìm theo một mã lỗi như \"ERR_504\" hoặc một tên riêng hiếm gặp thì sao?",
+        "answer_text": "À, trường hợp đó embedding có thể không bắt được vì mã lỗi không mang nhiều ngữ nghĩa, còn BM25 khớp chính xác chuỗi nên sẽ tốt hơn. Vậy chắc nên kết hợp cả hai, nhưng em chưa biết gộp kết quả hai bên như thế nào.",
+        "asked_at": "2026-11-01T09:05:35Z",
+        "answered_at": "2026-11-01T09:07:00Z"
+      },
+      {
+        "turn_no": 5,
+        "question_id": "q_003",
+        "parent_question_id": null,
+        "kind": "main",
+        "skill_id": "rag_systems",
+        "question_text": "Chatbot RAG của bạn trả lời sai một câu hỏi. Bạn sẽ kiểm tra những gì để tìm nguyên nhân?",
+        "answer_text": "Em sẽ xem đoạn văn được truy xuất có chứa câu trả lời không. Nếu có mà câu trả lời vẫn sai thì có thể do prompt. Còn đo bằng chỉ số nào thì em chưa chắc lắm.",
+        "asked_at": "2026-11-01T09:07:05Z",
+        "answered_at": "2026-11-01T09:08:20Z"
+      }
+    ],
+    "report_status": "completed"
+  },
+  "report": {
+    "session_id": "6f3b8c1e-2a4d-4e8f-9b1a-1c2d3e4f5a01",
+    "role": "ai_engineer",
+    "level": "fresher",
+    "mode": "demo",
+    "overall_score": 3.2,
+    "skill_scores": [
+      {
+        "skill_id": "machine_learning",
+        "skill_version": "1.0.0",
+        "score": 3.85,
+        "question_ids": ["q_001"],
+        "summary": "Nắm chắc overfitting và cách đánh giá khi dữ liệu ít."
+      },
+      {
+        "skill_id": "rag_systems",
+        "skill_version": "1.0.0",
+        "score": 2.55,
+        "question_ids": ["q_002", "q_003"],
+        "summary": "Hiểu dense retrieval nhưng chưa nắm cách kết hợp với sparse và cách đánh giá RAG theo từng tầng."
+      }
+    ],
+    "cross_cutting": [
+      {
+        "skill_id": "communication",
+        "skill_version": "1.0.0",
+        "criteria": [
+          {
+            "criterion_id": "clarity",
+            "score": 4,
+            "rationale": "Định nghĩa ngắn gọn, dùng thuật ngữ đúng chỗ.",
+            "evidence": [
+              {
+                "turn_no": 1,
+                "quote": "Overfitting là khi mô hình học thuộc dữ liệu huấn luyện, kể cả nhiễu"
+              }
+            ]
+          },
+          {
+            "criterion_id": "structure",
+            "score": 4,
+            "rationale": "Trả lời đi thẳng vào giải pháp rồi giải thích lý do.",
+            "evidence": [
+              {
+                "turn_no": 2,
+                "quote": "Với dữ liệu ít em sẽ dùng k-fold cross-validation"
+              }
+            ]
+          }
+        ],
+        "summary": "Diễn đạt rõ ràng, có bố cục."
+      },
+      {
+        "skill_id": "problem_solving",
+        "skill_version": "1.0.0",
+        "criteria": [
+          {
+            "criterion_id": "decomposition",
+            "score": 3,
+            "rationale": "Bắt đầu đúng từ tầng retrieval nhưng chưa có quy trình đo đạc.",
+            "evidence": [
+              {
+                "turn_no": 5,
+                "quote": "Em sẽ xem đoạn văn được truy xuất có chứa câu trả lời không"
+              }
+            ]
+          },
+          {
+            "criterion_id": "handling_uncertainty",
+            "score": 4,
+            "rationale": "Thừa nhận rõ phần chưa biết và tự điều chỉnh nhận định ban đầu khi gặp phản ví dụ.",
+            "evidence": [
+              {
+                "turn_no": 4,
+                "quote": "em chưa biết gộp kết quả hai bên như thế nào"
+              }
+            ]
+          }
+        ],
+        "summary": "Trung thực với giới hạn kiến thức; cần một quy trình debug có hệ thống hơn."
+      }
+    ],
+    "questions": [
+      {
+        "question_id": "q_001",
+        "skill_id": "machine_learning",
+        "skill_version": "1.0.0",
+        "status": "scored",
+        "turn_nos": [1, 2],
+        "weighted_score": 3.85,
+        "criteria": [
+          {
+            "criterion_id": "technical_accuracy",
+            "score": 4,
+            "rationale": "Định nghĩa và cách phát hiện overfitting đều đúng.",
+            "evidence": [
+              {
+                "turn_no": 1,
+                "quote": "điểm trên tập train rất cao nhưng trên dữ liệu mới lại kém"
+              }
+            ]
+          },
+          {
+            "criterion_id": "completeness",
+            "score": 4,
+            "rationale": "Bổ sung cross-validation và stratified ở câu hỏi sâu.",
+            "evidence": [
+              { "turn_no": 2, "quote": "dùng k-fold cross-validation" }
+            ]
+          },
+          {
+            "criterion_id": "reasoning",
+            "score": 4,
+            "rationale": "Giải thích vì sao phải giữ riêng tập test.",
+            "evidence": [
+              {
+                "turn_no": 2,
+                "quote": "Tập test vẫn phải để riêng, không dùng để chọn siêu tham số"
+              }
+            ]
+          },
+          {
+            "criterion_id": "practical_examples",
+            "score": 3,
+            "rationale": "Có ví dụ từ đồ án nhưng chưa nêu kết quả đo được.",
+            "evidence": [
+              {
+                "turn_no": 1,
+                "quote": "Trong đồ án phân loại bình luận, em dùng early stopping và dropout để giảm"
+              }
+            ]
+          }
+        ],
+        "covered_points": [
+          "Định nghĩa overfitting",
+          "Phát hiện bằng so sánh train và validation",
+          "Cross-validation khi dữ liệu ít"
+        ],
+        "missed_points": ["Regularization (L1/L2) và tăng dữ liệu như các cách giảm overfitting khác"],
+        "strengths": ["Phân biệt rõ vai trò của tập validation và tập test"],
+        "gaps": ["Chưa nêu kết quả cụ thể sau khi áp dụng early stopping và dropout"],
+        "improvement_suggestion": "Khi kể ví dụ từ đồ án, nêu thêm con số trước và sau (ví dụ validation accuracy) để chứng minh biện pháp có hiệu quả."
+      },
+      {
+        "question_id": "q_002",
+        "skill_id": "rag_systems",
+        "skill_version": "1.0.0",
+        "status": "scored",
+        "turn_nos": [3, 4],
+        "weighted_score": 2.85,
+        "criteria": [
+          {
+            "criterion_id": "technical_accuracy",
+            "score": 3,
+            "rationale": "Mô tả đúng dense retrieval; ban đầu đánh giá thấp tìm theo từ khóa, đã tự điều chỉnh ở câu hỏi sâu.",
+            "evidence": [
+              {
+                "turn_no": 3,
+                "quote": "so cosine similarity, nên tìm được những đoạn có cùng ý dù dùng từ khác"
+              }
+            ]
+          },
+          {
+            "criterion_id": "completeness",
+            "score": 3,
+            "rationale": "Nêu được điểm mạnh của BM25 nhưng chưa biết cách kết hợp hai bên.",
+            "evidence": [
+              { "turn_no": 4, "quote": "BM25 khớp chính xác chuỗi nên sẽ tốt hơn" }
+            ]
+          },
+          {
+            "criterion_id": "reasoning",
+            "score": 3,
+            "rationale": "Giải thích được vì sao embedding kém với mã lỗi.",
+            "evidence": [
+              { "turn_no": 4, "quote": "mã lỗi không mang nhiều ngữ nghĩa" }
+            ]
+          },
+          {
+            "criterion_id": "practical_examples",
+            "score": 2,
+            "rationale": "Không có ví dụ từ dự án; khẳng định ban đầu mang tính chung chung.",
+            "evidence": [
+              { "turn_no": 3, "quote": "em nghĩ dùng embedding là đủ cho hầu hết trường hợp" }
+            ]
+          }
+        ],
+        "covered_points": [
+          "Embedding so sánh vector ngữ nghĩa",
+          "Từ khóa mạnh với mã và tên riêng",
+          "Có thể kết hợp hai cách"
+        ],
+        "missed_points": ["Cách gộp kết quả: Reciprocal Rank Fusion hoặc chuẩn hóa điểm"],
+        "strengths": ["Tự nhận ra giới hạn của embedding khi gặp phản ví dụ"],
+        "gaps": ["Khẳng định một cách tuyệt đối khi chưa có số liệu"],
+        "improvement_suggestion": "Trả lời theo cấu trúc: điểm mạnh và điểm yếu của từng cách, rồi nêu hybrid kèm cách gộp kết quả (RRF) và cách đo để chứng minh."
+      },
+      {
+        "question_id": "q_003",
+        "skill_id": "rag_systems",
+        "skill_version": "1.0.0",
+        "status": "scored",
+        "turn_nos": [5],
+        "weighted_score": 2.25,
+        "criteria": [
+          {
+            "criterion_id": "technical_accuracy",
+            "score": 3,
+            "rationale": "Kiểm tra tầng retrieval trước là hướng đúng.",
+            "evidence": [
+              {
+                "turn_no": 5,
+                "quote": "xem đoạn văn được truy xuất có chứa câu trả lời không"
+              }
+            ]
+          },
+          {
+            "criterion_id": "completeness",
+            "score": 2,
+            "rationale": "Thiếu bộ đánh giá có nhãn, metric và các nguyên nhân phía retrieval.",
+            "evidence": [
+              {
+                "turn_no": 5,
+                "quote": "Nếu có mà câu trả lời vẫn sai thì có thể do prompt"
+              }
+            ]
+          },
+          {
+            "criterion_id": "reasoning",
+            "score": 2,
+            "rationale": "Phân nhánh nguyên nhân còn sơ lược.",
+            "evidence": [
+              {
+                "turn_no": 5,
+                "quote": "Nếu có mà câu trả lời vẫn sai thì có thể do prompt"
+              }
+            ]
+          },
+          {
+            "criterion_id": "practical_examples",
+            "score": 1,
+            "rationale": "Không có ví dụ hoặc cách đo cụ thể.",
+            "evidence": [
+              { "turn_no": 5, "quote": "Còn đo bằng chỉ số nào thì em chưa chắc lắm" }
+            ]
+          }
+        ],
+        "covered_points": ["Kiểm tra retrieval trước generation"],
+        "missed_points": [
+          "Đo Recall@K trên bộ câu hỏi có nhãn",
+          "Faithfulness của câu trả lời",
+          "Nguyên nhân phía retrieval: chunking, embedding, index cũ"
+        ],
+        "strengths": ["Tách được hai tầng retrieval và generation"],
+        "gaps": ["Chưa biết metric đánh giá RAG"],
+        "improvement_suggestion": "Ôn Recall@K, MRR cho retrieval và faithfulness cho generation; luyện trả lời theo quy trình: tái hiện lỗi, khoanh vùng tầng, đo trước và sau khi sửa."
+      }
+    ],
+    "top_strengths": [
+      "Nền tảng machine learning vững, phân biệt rõ validation và test",
+      "Trung thực khi chưa chắc chắn"
+    ],
+    "priority_improvements": [
+      "Hybrid retrieval và cách gộp kết quả",
+      "Metric đánh giá RAG theo từng tầng"
+    ],
+    "study_topics": [
+      "Reciprocal Rank Fusion",
+      "Recall@K, MRR, nDCG",
+      "Faithfulness và LLM-as-judge"
+    ],
+    "versions": { "rubric": "1.0.0", "evaluator_prompt": "1.0.0" },
+    "disclaimer": "Đây là công cụ luyện tập. Kết quả không phải đánh giá tuyển dụng chính thức và chỉ dựa trên nội dung transcript bạn đã xác nhận.",
+    "generated_at": "2026-11-01T09:15:10Z"
+  }
+}
