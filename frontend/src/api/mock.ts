@@ -22,8 +22,8 @@ import {
 } from './types'
 
 /**
- * In-browser stand-in for the backend (Phase 0). It follows the same rules the real API will
- * enforce: limits from the catalog, at most N follow-ups per question, idempotent answers,
+ * In-browser stand-in for the backend (VITE_API_MODE=mock). It follows the backend's rules:
+ * limits from the catalog, at most N follow-ups per question, idempotent answers,
  * and reports only after the session ends. Scores here are placeholders, not AI evaluation.
  */
 
@@ -93,12 +93,16 @@ function loadRecords(): Map<string, MockRecord> {
   return seedRecords()
 }
 
-function previewFor(setup: InterviewSetup, script: MockQuestion[]): PlanPreview {
+function previewFor(
+  setup: InterviewSetup,
+  script: MockQuestion[],
+  docs: { cv: boolean; jd: boolean },
+): PlanPreview {
   const counts = new Map<string, number>()
   for (const q of script) counts.set(q.skillId, (counts.get(q.skillId) ?? 0) + 1)
   const sources: InputSource[] = ['role_config', 'role_playbook', 'competency_skills']
-  if (setup.cv_text) sources.push('cv')
-  if (setup.jd_text) sources.push('jd')
+  if (docs.cv) sources.push('cv')
+  if (docs.jd) sources.push('jd')
   const limits = LIMITS[setup.mode]
   return {
     role_playbook: { id: `role_${setup.role}`, version: '1.0.0' },
@@ -291,17 +295,20 @@ export function createMockApi({ latency = true }: { latency?: boolean } = {}): A
   }
 
   return {
-    async createInterview(setup) {
+    supportsLiveInterview: true,
+
+    async createInterview(setup, files) {
       await pause(600)
       const id = crypto.randomUUID()
+      const docs = { cv: Boolean(setup.cv_text || files?.cv), jd: Boolean(setup.jd_text || files?.jd) }
       const session: SessionView = {
         id,
         role: setup.role,
         level: setup.level,
         mode: setup.mode,
         status: 'ready',
-        has_cv: Boolean(setup.cv_text),
-        has_jd: Boolean(setup.jd_text),
+        has_cv: docs.cv,
+        has_jd: docs.jd,
         created_at: now(),
         started_at: null,
         ended_at: null,
@@ -310,11 +317,16 @@ export function createMockApi({ latency = true }: { latency?: boolean } = {}): A
         turns: [],
         report_status: null,
       }
-      const script = scriptFor(session, Boolean(setup.cv_text))
-      session.plan_preview = previewFor(setup, script)
+      const script = scriptFor(session, docs.cv)
+      session.plan_preview = previewFor(setup, script, docs)
       records.set(id, { session, report: null, script, processedRequests: [] })
       persist()
       return structuredClone(session)
+    },
+
+    async prepareInterview(id) {
+      await pause()
+      return view(get(id))
     },
 
     async getInterview(id) {

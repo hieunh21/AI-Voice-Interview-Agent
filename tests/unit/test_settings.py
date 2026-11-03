@@ -40,6 +40,13 @@ def test_empty_api_key_is_none() -> None:
     assert _settings().gemini_api_key is None
 
 
+def test_gemini_base_url_is_optional_and_must_be_https() -> None:
+    assert _settings(gemini_base_url="").gemini_base_url is None
+    assert _settings(gemini_base_url="https://gw.example/").gemini_base_url == "https://gw.example"
+    with pytest.raises(ValidationError, match="https"):
+        _settings(gemini_base_url="http://gw.example")
+
+
 def test_valid_production_settings() -> None:
     settings = _settings(app_env="production", cors_origins="https://intervai.app")
     assert settings.is_production

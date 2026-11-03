@@ -151,6 +151,26 @@ def _check_catalog(lib: PlaybookLibrary, report: _Report) -> None:
                     f"{min_listed} to choose from",
                 )
 
+            # Seed capacity: the best-weighted skills a mode can pick must hold all its questions.
+            ranked = sorted(
+                level_cfg.skills.items(), key=lambda item: (not item[1].core, -item[1].weight)
+            )
+            capacities = [
+                len(lib.skills[skill_id].seeds_for_level(level))
+                for skill_id, _ in ranked
+                if skill_id in lib.skills
+            ]
+            if len(capacities) == len(ranked):
+                for mode_name, mode_cfg in catalog.modes.items():
+                    capacity = sum(capacities[: mode_cfg.skills.max])
+                    if capacity < mode_cfg.main_questions:
+                        report.error(
+                            "catalog-capacity",
+                            path,
+                            f"{where}: {mode_name.value} needs {mode_cfg.main_questions} questions "
+                            f"but its skills only have {capacity} seeds at this level",
+                        )
+
             for skill_id in level_cfg.skills:
                 if skill_id in catalog.cross_cutting_skills:
                     report.error(

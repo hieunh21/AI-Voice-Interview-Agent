@@ -61,7 +61,9 @@ status: draft
 | `## Positive Signals` | yes | Bullets: what a strong answer looks like for this role |
 | `## Pitfalls` | yes | Bullets: common mistakes to probe |
 | `## Interviewer Guidance` | yes | Bullets: how to ask, follow up and move on |
-| `## Changelog`, `## Notes` | no | |
+| `## Purpose` | no | One paragraph: what this interview assesses |
+| `## Interviewer Probes` | no | Bullets: generic probes the planner may adapt |
+| `## References`, `## Changelog`, `## Notes` | no | |
 
 ## Competency skill — `competencies/<group>/<skill_id>.md`
 
@@ -105,9 +107,12 @@ Seed ids are unique across the whole library.
 - Kết hợp bằng Reciprocal Rank Fusion hoặc chuẩn hóa điểm.
 **Follow-up probes:**
 - Vì sao không cộng trực tiếp điểm cosine và điểm BM25?
+**Scoring caution:** Không coi việc nối hai danh sách mà không khử trùng lặp là fusion đúng.
 ```
 
-- All four fields are required. `Levels` must be a subset of the skill's levels.
+- `Levels`, `Objective`, `Expected points` and `Follow-up probes` are required; `Scoring caution`
+  (a common wrong answer the evaluator must not reward) is optional and frozen into the plan.
+  `Levels` must be a subset of the skill's levels.
 - `Expected points`: ≥ 2 bullets, each a checkable idea (scored by `completeness`).
 - `Follow-up probes`: ≥ 1 bullet. They are *hints*; LIVE follow-ups must still react to the
   candidate's actual answer.
@@ -138,6 +143,14 @@ Seed ids are unique across the whole library.
 2. **LIVE** — reads only the frozen plan + recent turns. Markdown is never re-read.
 3. **POST** — scores each question thread with the frozen rubric; changing a file later never
    changes an existing session's scoring.
+
+## Provenance
+
+The Markdown + YAML-frontmatter playbook mechanism (metadata-based selection, bounded excerpts
+for the planner) is inspired by the public
+[DeepInterview skill library](https://github.com/ngoanpv/DeepInterview/tree/main/skills)
+(Apache-2.0). IntervAI's two-kind schema, shared anchored rubric and all questions, expected
+points and rubric notes are authored for IntervAI; no playbook content is copied.
 
 ## Lint
 

@@ -22,7 +22,41 @@ export default function InterviewRoomPage() {
   if (session.status === 'ready') return <ReadyView session={session} onChange={setData} />
   if (session.status === 'in_progress') return <LiveView session={session} onChange={setData} />
   if (session.status === 'completed') return <CompletedView session={session} />
+  if (session.status === 'created' || session.status === 'failed') {
+    return <PrepareView session={session} onChange={setData} />
+  }
   return <Notice title={`Phiên đang ở trạng thái: ${SESSION_STATUS_LABELS[session.status]}`} tone="amber" />
+}
+
+function PrepareView({ session, onChange }: { session: SessionView; onChange: (s: SessionView) => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function prepare() {
+    setBusy(true)
+    setError(null)
+    try {
+      onChange(await api.prepareInterview(session.id))
+    } catch (err) {
+      setError(errorMessage(err))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="space-y-4">
+      <h1 className="text-xl font-semibold">Kế hoạch phỏng vấn chưa được tạo</h1>
+      <p className="text-sm text-slate-600">
+        {session.status === 'failed'
+          ? 'Lần lập kế hoạch trước không thành công. Bạn có thể thử lại.'
+          : 'Tài liệu của phiên vừa thay đổi, cần lập lại kế hoạch.'}
+      </p>
+      {error && <Notice title="Không lập được kế hoạch">{error}</Notice>}
+      <Button onClick={prepare} disabled={busy}>
+        {busy ? 'Đang lập kế hoạch…' : 'Lập kế hoạch'}
+      </Button>
+    </Card>
+  )
 }
 
 function ReadyView({ session, onChange }: { session: SessionView; onChange: (s: SessionView) => void }) {
@@ -44,8 +78,18 @@ function ReadyView({ session, onChange }: { session: SessionView; onChange: (s: 
     <div className="space-y-5">
       <PlanPreviewCard session={session} />
       {error && <Notice title="Không bắt đầu được">{error}</Notice>}
+      {!api.supportsLiveInterview && (
+        <Notice title="Phỏng vấn trực tiếp sắp có" tone="sky">
+          Kế hoạch trên đã được lập thật từ thư viện câu hỏi. Phần hỏi đáp với AI đang được phát
+          triển ở bước tiếp theo.
+        </Notice>
+      )}
       <div className="flex flex-wrap gap-3">
-        <Button onClick={start} disabled={starting} className="px-6 py-3 text-base">
+        <Button
+          onClick={start}
+          disabled={starting || !api.supportsLiveInterview}
+          className="px-6 py-3 text-base"
+        >
           {starting ? 'Đang bắt đầu…' : 'Bắt đầu phỏng vấn'}
         </Button>
         <Link to="/" className="inline-flex items-center px-3 text-sm text-slate-600 hover:underline">

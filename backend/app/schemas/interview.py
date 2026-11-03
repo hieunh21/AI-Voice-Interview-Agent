@@ -43,6 +43,7 @@ class PlanPreviewSkill(ContractModel):
     version: SemVer
     is_core: bool
     target_questions: int = Field(ge=1)
+    reasons: list[str] = Field(default_factory=list)
 
 
 class PlanPreview(ContractModel):
@@ -65,6 +66,7 @@ class PlanPreview(ContractModel):
                     version=s.version,
                     is_core=s.is_core,
                     target_questions=s.target_questions,
+                    reasons=s.reasons,
                 )
                 for s in plan.selected_skills
             ],

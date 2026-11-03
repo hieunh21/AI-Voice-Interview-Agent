@@ -28,6 +28,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-intervai}:${POSTGRES_PASSWORD:-intervai}@db:5432/${POSTGRES_DB:-intervai}
       CORS_ORIGINS: http://localhost:5173
       ALLOW_DRAFT_PLAYBOOKS: "true"
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-}
     ports:
       - "8000:8000"
     depends_on:

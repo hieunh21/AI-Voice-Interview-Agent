@@ -1,6 +1,6 @@
 # Design decisions
 
-Decisions taken at Phase 0 that refine the project roadmap. Each entry states the problem,
+Design decisions that refine the project roadmap. Each entry states the problem,
 the decision, and why. Where this file and the roadmap disagree, this file wins.
 
 ## D1 — Rubric anchors are shared and frozen into every plan
@@ -73,7 +73,7 @@ catalog — skill frontmatter has no `roles` field, so there is one source of tr
 ## D7 — Report generation: DB-backed job, no queue infrastructure
 
 `interview_reports` holds job state (`status`, `attempts`, `last_error`, timestamps), one row per
-session. Phase 4 runs evaluation as a FastAPI background task, re-queues `pending`/stale
+session. Evaluation runs as a FastAPI background task, re-queues `pending`/stale
 `processing` rows on startup (free-tier hosts restart), and relies on unique keys for idempotency.
 No Celery/Redis for a single-instance portfolio deploy.
 
@@ -107,8 +107,54 @@ FastAPI + SQLAlchemy 2 async + asyncpg (psycopg's async mode does not run on Win
 event loop). Alembic runs through the same driver. The initial migration is hand-written and CI
 verifies it with `alembic check` against the ORM models.
 
+## D14 — Skill library content: converted from the compiled draft library
+
+The first full library was compiled separately (format inspired by DeepInterview, Apache-2.0,
+content authored for IntervAI) and converted to this contract:
+
+- per-skill 0–4 criteria (≈50 ids without anchors) → the shared anchored 1–5 criteria of D1; each
+  skill keeps its emphasis through weights and per-criterion notes;
+- one level per seed → seeds tagged with every level they suit, so each skill has ≥ 2 seeds per
+  level (67 seeds in total); every seed gained an `Objective`;
+- `Scoring caution` (a common wrong answer not to reward) is kept as an optional seed field and is
+  frozen into the plan for the evaluator;
+- `communication` / `problem_solving` seeds were redistributed to domain skills (debugging → 
+  `programming_fundamentals`, data job sanity → `etl_pipeline`, model latency trade-off →
+  `model_evaluation`, release incident → `system_design`), per D3; their rubric ideas became the
+  cross-cutting criteria, including the new `hypothesis_testing`;
+- the generic "Follow-up Strategies" duplicated in every file moved to the role playbooks'
+  `Interviewer Guidance` (it is interviewer behaviour, not skill content).
+
+## D15 — Selection: catalog weights + document boost, D'Hondt allocation bounded by seed capacity
+
+Core skills are always selected. Optional skills are ranked by catalog weight + 0.20 if the JD or
++0.10 if the CV mentions one of the skill's keywords (word-boundary match, reasons recorded and
+shown to the user). Documents can add one skill within the mode's budget. Questions are allocated
+with D'Hondt (one minimum per skill) and never exceed the skill's seeds at that level; the linter
+checks this capacity for every role × level × mode (`catalog-capacity`).
+
+## D16 — The LLM proposes, the playbook decides
+
+The planner LLM returns proposals only. Seed-based questions take expected points, probes and
+scoring caution from the seed (the model may rephrase the wording); CV/JD questions must mention a
+project/skill from the *validated* analysis and are capped at ⌊main/3⌋ (≥ 1); unknown, duplicate or
+surplus proposals are dropped and missing slots filled from unused seeds. Rubric weights always
+come from the skill file. CV/JD extraction keeps only projects with a verbatim quote from the CV.
+
+## D17 — PREP never depends on the LLM being available
+
+Without a key, on timeout/quota, or after two invalid outputs, the graph builds the plan from
+reviewed seeds (seeded by the session id: varied but reproducible) and records
+`planner_model = "deterministic"`; a warning is shown only when documents were provided (their
+personalisation is lost). Quota errors never switch to another (paid) model.
+
+## D18 — Guest identity
+
+`POST /api/auth/guest` returns a 256-bit random token once; only its SHA-256 is stored. Every
+interview endpoint requires it, and another user's session answers 404, not 403.
+
 ## D13 — Frontend mocks are contract-tested
 
-Phase-0 UI runs on in-browser mocks backed by four fixtures (no documents, CV only, JD only,
+With `VITE_API_MODE=mock` the UI runs on in-browser mocks backed by four fixtures (no documents, CV only, JD only,
 CV + JD). `tests/unit/test_frontend_fixtures.py` validates them against the Pydantic contracts,
 checks every evidence quote is verbatim in the transcript, and recomputes all scores.

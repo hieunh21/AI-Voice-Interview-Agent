@@ -11,8 +11,9 @@ def _client(database_url: str) -> TestClient:
         app_env="test",
         database_url=database_url,
         cors_origins="http://localhost:5173",
+        allow_draft_playbooks=True,
     )
-    return TestClient(create_app(settings))
+    return TestClient(create_app(settings, llm=None))
 
 
 def test_liveness_reports_version_and_environment() -> None:

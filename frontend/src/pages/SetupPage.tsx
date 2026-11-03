@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { api } from '../api'
+import type { SetupFiles } from '../api/types'
 import { Button, Card, Notice } from '../components/ui'
 import { errorMessage } from '../lib/errors'
 import { LEVELS, MODES, ROLES } from '../lib/labels'
@@ -14,6 +15,9 @@ import {
   type SetupForm,
 } from '../lib/setup'
 
+const DOC_KIND = { cvText: 'cv', jdText: 'jd' } as const
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
 const optionClass = (selected: boolean) =>
   `cursor-pointer rounded-xl p-4 text-left ring-1 transition focus-within:ring-2 focus-within:ring-indigo-500 ${
     selected ? 'bg-indigo-50 ring-indigo-500' : 'bg-white ring-slate-200 hover:ring-slate-300'
@@ -24,6 +28,7 @@ export default function SetupPage() {
   const [form, setForm] = useState<SetupForm>(EMPTY_SETUP)
   const [errors, setErrors] = useState<SetupErrors>({})
   const [showDocuments, setShowDocuments] = useState(false)
+  const [files, setFiles] = useState<SetupFiles>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -32,11 +37,27 @@ export default function SetupPage() {
     setErrors((current) => ({ ...current, [key]: undefined }))
   }
 
-  const loadTextFile = (key: 'cvText' | 'jdText') => async (event: ChangeEvent<HTMLInputElement>) => {
+  // .txt is read into the textarea (editable); PDFs are uploaded for server-side text extraction.
+  const loadFile = (key: 'cvText' | 'jdText') => async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) update(key, await file.text())
     event.target.value = ''
+    if (!file) return
+    const kind = DOC_KIND[key]
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      if (file.size > MAX_UPLOAD_BYTES) {
+        setErrors((current) => ({ ...current, [key]: 'File PDF tối đa 5 MB.' }))
+        return
+      }
+      setFiles((current) => ({ ...current, [kind]: file }))
+      update(key, '')
+    } else {
+      setFiles((current) => ({ ...current, [kind]: undefined }))
+      update(key, await file.text())
+    }
   }
+
+  const removeFile = (key: 'cvText' | 'jdText') =>
+    setFiles((current) => ({ ...current, [DOC_KIND[key]]: undefined }))
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -46,7 +67,7 @@ export default function SetupPage() {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      const session = await api.createInterview(toSetupPayload(form))
+      const session = await api.createInterview(toSetupPayload(form), files)
       navigate(`/interviews/${session.id}`)
     } catch (error) {
       setSubmitError(errorMessage(error))
@@ -155,36 +176,59 @@ export default function SetupPage() {
                 ['cvText', 'CV', MAX_CV_CHARS, 'Dán nội dung CV (dự án, kinh nghiệm, kỹ năng)…'],
                 ['jdText', 'Job Description', MAX_JD_CHARS, 'Dán mô tả công việc…'],
               ] as const
-            ).map(([key, label, max, placeholder]) => (
-              <div key={key}>
-                <div className="flex items-center justify-between">
-                  <label htmlFor={key} className="text-sm font-medium">
-                    {label}
-                  </label>
-                  <label className="cursor-pointer text-xs font-medium text-indigo-600 hover:underline">
-                    Tải file .txt
-                    <input type="file" accept=".txt,text/plain" className="sr-only" onChange={loadTextFile(key)} />
-                  </label>
+            ).map(([key, label, max, placeholder]) => {
+              const pdf = files[DOC_KIND[key]]
+              return (
+                <div key={key}>
+                  <div className="flex items-center justify-between">
+                    <label htmlFor={key} className="text-sm font-medium">
+                      {label}
+                    </label>
+                    <label className="cursor-pointer text-xs font-medium text-indigo-600 hover:underline">
+                      Tải file PDF/TXT
+                      <input
+                        type="file"
+                        accept=".pdf,.txt,application/pdf,text/plain"
+                        className="sr-only"
+                        onChange={loadFile(key)}
+                      />
+                    </label>
+                  </div>
+                  {pdf && (
+                    <div className="mt-2 flex items-center justify-between rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900">
+                      <span className="truncate">📄 {pdf.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(key)}
+                        className="ml-3 text-xs font-medium hover:underline"
+                      >
+                        Bỏ file
+                      </button>
+                    </div>
+                  )}
+                  <textarea
+                    id={key}
+                    value={form[key]}
+                    onChange={(event) => update(key, event.target.value)}
+                    rows={pdf ? 3 : 8}
+                    disabled={Boolean(pdf)}
+                    placeholder={pdf ? 'Đang dùng nội dung từ file PDF.' : placeholder}
+                    className="mt-2 w-full rounded-lg border-0 px-3 py-2 text-sm ring-1 ring-slate-300 focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50"
+                  />
+                  <div className="mt-1 flex justify-between text-xs text-slate-500">
+                    <span className="text-rose-600">{errors[key]}</span>
+                    {!pdf && (
+                      <span>
+                        {form[key].trim().length.toLocaleString('vi-VN')}/{max.toLocaleString('vi-VN')}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <textarea
-                  id={key}
-                  value={form[key]}
-                  onChange={(event) => update(key, event.target.value)}
-                  rows={8}
-                  placeholder={placeholder}
-                  className="mt-2 w-full rounded-lg border-0 px-3 py-2 text-sm ring-1 ring-slate-300 focus:ring-2 focus:ring-indigo-500"
-                />
-                <div className="mt-1 flex justify-between text-xs text-slate-500">
-                  <span className="text-rose-600">{errors[key]}</span>
-                  <span>
-                    {form[key].trim().length.toLocaleString('vi-VN')}/{max.toLocaleString('vi-VN')}
-                  </span>
-                </div>
-              </div>
-            ))}
+              )
+            })}
             <p className="text-xs text-slate-500 sm:col-span-2">
-              Tài liệu chỉ dùng để lập kế hoạch cho phiên này và bị xóa cùng phiên. Hỗ trợ PDF sẽ có
-              khi kết nối backend. Đừng dán thông tin nhạy cảm không cần thiết.
+              Tài liệu chỉ dùng để lập kế hoạch cho phiên này và bị xóa cùng phiên. PDF cần có lớp
+              text (không phải ảnh scan). Đừng đưa thông tin nhạy cảm không cần thiết.
             </p>
           </div>
         )}

@@ -1,6 +1,6 @@
 import type { Role } from '../api/types'
 
-// Phase-0 mock content only. Real questions come from the Playbook Library via the planner.
+// Mock-mode content only. Real questions come from the Playbook Library via the planner.
 
 export interface MockQuestion {
   skillId: string

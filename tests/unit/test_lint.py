@@ -29,10 +29,19 @@ def test_real_library_passes_default_mode() -> None:
     assert main([]) == 0
 
 
-def test_strict_mode_turns_missing_files_and_drafts_into_errors() -> None:
+def test_strict_mode_turns_drafts_into_errors() -> None:
     issues = lint_library(load_library(), strict=True)
-    assert {"missing-skill", "missing-playbook", "draft"} <= _errors(issues)
+    assert _errors(issues) == {"draft"}
     assert main(["--strict"]) == 1
+
+
+def test_strict_mode_turns_missing_files_into_errors(library_copy) -> None:
+    playbooks, config = library_copy
+    (playbooks / "competencies" / "data_engineer" / "sql.md").unlink()
+    (playbooks / "roles" / "data_engineer.md").unlink()
+    errors = _errors(_lint(playbooks, config, strict=True))
+    assert {"missing-skill", "missing-playbook"} <= errors
+    assert not {"missing-skill", "missing-playbook"} & _errors(_lint(playbooks, config))
 
 
 def test_rubric_weights_must_sum_to_one(library_copy) -> None:
@@ -74,7 +83,7 @@ def test_seed_requires_all_fields(library_copy) -> None:
 
 def test_seed_heading_format(library_copy) -> None:
     playbooks, config = library_copy
-    _edit(playbooks / RAG, "### rag_basics_01 — ", "### RAG basics: ")
+    _edit(playbooks / RAG, "### rag_01 — ", "### RAG basics: ")
     assert "seed-heading" in _errors(_lint(playbooks, config))
 
 

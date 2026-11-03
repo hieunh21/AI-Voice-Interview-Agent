@@ -47,7 +47,7 @@ ROLE_REQUIRED_SECTIONS = (
     "Pitfalls",
     "Interviewer Guidance",
 )
-ROLE_OPTIONAL_SECTIONS = ("Changelog", "Notes")
+ROLE_OPTIONAL_SECTIONS = ("Purpose", "Interviewer Probes", "References", "Changelog", "Notes")
 
 SKILL_REQUIRED_SECTIONS: dict[Assessment, tuple[str, ...]] = {
     Assessment.QUESTION: (
@@ -74,6 +74,7 @@ SKILL_OPTIONAL_SECTIONS: dict[Assessment, tuple[str, ...]] = {
 }
 
 SEED_FIELDS = ("levels", "objective", "expected points", "follow-up probes")
+SEED_OPTIONAL_FIELDS = ("scoring caution",)
 
 _SEED_HEADING_RE = re.compile(r"^(?P<id>[a-z][a-z0-9_]{1,63})\s+[—–-]\s+(?P<question>\S.*)$")
 _RUBRIC_LINE_RE = re.compile(
@@ -247,7 +248,7 @@ def _parse_seeds(body: str, skill_levels: list[Level], out: _Issues) -> list[Que
         fields, duplicates = parse_fields(sub.body)
         for label in duplicates:
             out.error("seed-field", f"{seed_id}: field '**{label}:**' appears more than once")
-        for label in sorted(set(fields) - set(SEED_FIELDS)):
+        for label in sorted(set(fields) - set(SEED_FIELDS) - set(SEED_OPTIONAL_FIELDS)):
             out.error("seed-field", f"{seed_id}: unknown field '**{label}:**'")
         missing = [label for label in SEED_FIELDS if not fields.get(label)]
         for label in missing:
@@ -262,6 +263,7 @@ def _parse_seeds(body: str, skill_levels: list[Level], out: _Issues) -> list[Que
             "objective": " ".join(fields["objective"].split()),
             "expected_points": parse_bullets(fields["expected points"]),
             "followup_probes": parse_bullets(fields["follow-up probes"]),
+            "scoring_caution": " ".join(fields.get("scoring caution", "").split()) or None,
         }
         try:
             seed = QuestionSeed.model_validate(data)

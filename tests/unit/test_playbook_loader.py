@@ -28,11 +28,13 @@ def test_competency_skill_seeds_rubric_and_references() -> None:
 
     seed_ids = [seed.id for seed in skill.seeds]
     assert len(seed_ids) == len(set(seed_ids)) >= 2
-    hybrid = next(seed for seed in skill.seeds if seed.id == "rag_hybrid_01")
+    hybrid = next(seed for seed in skill.seeds if seed.id == "rag_04")
     assert hybrid.levels == [Level.FRESHER, Level.JUNIOR]
     assert len(hybrid.expected_points) >= 2
     assert hybrid.followup_probes
-    assert hybrid.question.startswith("Khi nào nên dùng hybrid retrieval")
+    assert hybrid.question.startswith("Khi nào nên kết hợp dense và sparse retrieval")
+    assert hybrid.scoring_caution
+    assert "khử trùng lặp" in hybrid.scoring_caution
 
     for level in skill.meta.levels:
         assert skill.seeds_for_level(level), f"no seed for {level}"
@@ -53,6 +55,18 @@ def test_content_hash_ignores_line_ending_style(library_copy) -> None:
     path = playbooks / "competencies" / "ai_engineer" / "rag_systems.md"
     path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
     assert load_library(playbooks, config).skills["rag_systems"].content_sha256 == original
+
+
+def test_full_library_is_present_with_level_coverage() -> None:
+    library = load_library()
+    assert len(library.roles) == 3
+    assert len(library.skills) == 14
+    for skill in library.skills.values():
+        if skill.meta.assessment is Assessment.CROSS_CUTTING:
+            assert skill.seeds == []
+            continue
+        for level in skill.meta.levels:
+            assert len(skill.seeds_for_level(level)) >= 2, (skill.meta.id, level)
 
 
 def test_catalog_covers_every_role_and_level() -> None:

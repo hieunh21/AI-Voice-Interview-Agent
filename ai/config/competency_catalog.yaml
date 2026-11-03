@@ -56,20 +56,20 @@ roles:
           rag_systems: { weight: 0.10 }
       fresher:
         skills:
-          machine_learning: { weight: 0.25, core: true }
           rag_systems: { weight: 0.25, core: true }
-          deep_learning: { weight: 0.15 }
-          llm_agents: { weight: 0.15 }
+          machine_learning: { weight: 0.20, core: true }
+          llm_agents: { weight: 0.20 }
           model_evaluation: { weight: 0.15 }
-          programming_fundamentals: { weight: 0.05 }
+          deep_learning: { weight: 0.10 }
+          programming_fundamentals: { weight: 0.10 }
       junior:
         skills:
           rag_systems: { weight: 0.25, core: true }
           llm_agents: { weight: 0.25, core: true }
           model_evaluation: { weight: 0.20 }
-          machine_learning: { weight: 0.10 }
           deep_learning: { weight: 0.10 }
-          api_design: { weight: 0.10 }
+          machine_learning: { weight: 0.10 }
+          system_design: { weight: 0.10 }
 
   backend_developer:
     display_name: Backend Developer
@@ -77,15 +77,17 @@ roles:
     levels:
       intern:
         skills:
-          programming_fundamentals: { weight: 0.40, core: true }
+          programming_fundamentals: { weight: 0.35, core: true }
           api_design: { weight: 0.30, core: true }
-          databases: { weight: 0.30 }
+          databases: { weight: 0.25 }
+          system_design: { weight: 0.10 }
       fresher:
         skills:
           api_design: { weight: 0.30, core: true }
           databases: { weight: 0.30, core: true }
-          programming_fundamentals: { weight: 0.20 }
           system_design: { weight: 0.20 }
+          sql: { weight: 0.10 }
+          programming_fundamentals: { weight: 0.10 }
       junior:
         skills:
           databases: { weight: 0.30, core: true }
@@ -108,10 +110,10 @@ roles:
           sql: { weight: 0.30, core: true }
           etl_pipeline: { weight: 0.30, core: true }
           data_processing: { weight: 0.25 }
-          programming_fundamentals: { weight: 0.15 }
+          databases: { weight: 0.15 }
       junior:
         skills:
           etl_pipeline: { weight: 0.30, core: true }
           data_processing: { weight: 0.30, core: true }
           sql: { weight: 0.25 }
-          programming_fundamentals: { weight: 0.15 }
+          databases: { weight: 0.15 }

@@ -95,6 +95,19 @@ criteria:
       4: Làm rõ yêu cầu và giả định trước khi giải, xem xét phương án thay thế.
       5: Phân rã có hệ thống, nêu tiêu chí đánh giá, rủi ro, edge case và cách kiểm chứng.
 
+  hypothesis_testing:
+    name: Giả thuyết và kiểm chứng
+    applies_to: cross_cutting
+    description: >-
+      Khi gặp sự cố hoặc lựa chọn, ứng viên đặt giả thuyết có thể kiểm chứng, đo trước khi kết luận
+      và xác nhận bản sửa.
+    anchors:
+      1: Đoán nguyên nhân hoặc kết luận mà không có cách kiểm chứng.
+      2: Có nêu nguyên nhân khả dĩ nhưng không nói cách kiểm tra.
+      3: Nêu được giả thuyết và một cách kiểm tra hợp lý.
+      4: Đo hoặc tái hiện trước khi sửa, thay đổi từng yếu tố, so sánh với baseline.
+      5: Kiểm chứng có hệ thống, xác nhận bản sửa và đề xuất test hoặc giám sát để chống tái phát.
+
   handling_uncertainty:
     name: Xử lý khi chưa chắc chắn
     applies_to: cross_cutting

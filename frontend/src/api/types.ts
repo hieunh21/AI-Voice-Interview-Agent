@@ -37,6 +37,7 @@ export interface PlanPreviewSkill {
   version: string
   is_core: boolean
   target_questions: number
+  reasons?: string[]
 }
 
 export interface PlanPreview {
@@ -162,9 +163,18 @@ export interface AnswerSubmission {
   answer_text: string
 }
 
+export interface SetupFiles {
+  cv?: File
+  jd?: File
+}
+
 export interface ApiClient {
-  /** Create a session and prepare its plan (real API: POST /interviews then /prepare). */
-  createInterview(setup: InterviewSetup): Promise<SessionView>
+  /** Whether start/answer/finish/report are available (the live interview arrives later). */
+  readonly supportsLiveInterview: boolean
+  /** Create a session, upload optional files, then prepare its plan. */
+  createInterview(setup: InterviewSetup, files?: SetupFiles): Promise<SessionView>
+  /** (Re)build the plan of a session that is not ready yet (e.g. after a failure). */
+  prepareInterview(id: string): Promise<SessionView>
   getInterview(id: string): Promise<SessionView>
   listInterviews(): Promise<SessionSummary[]>
   startInterview(id: string): Promise<SessionView>

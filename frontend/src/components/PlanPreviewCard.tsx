@@ -36,12 +36,19 @@ export function PlanPreviewCard({ session }: { session: SessionView }) {
       <h3 className="mt-6 text-sm font-semibold text-slate-700">Chủ đề sẽ được hỏi</h3>
       <ul className="mt-2 divide-y divide-slate-100">
         {plan.skills.map((skill) => (
-          <li key={skill.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-            <span className="flex items-center gap-2">
-              {skill.title}
-              {skill.is_core && <Badge tone="emerald">Cốt lõi</Badge>}
-            </span>
-            <span className="text-slate-500">{skill.target_questions} câu</span>
+          <li key={skill.id} className="py-2 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2">
+                {skill.title}
+                {skill.is_core && <Badge tone="emerald">Cốt lõi</Badge>}
+              </span>
+              <span className="shrink-0 text-slate-500">{skill.target_questions} câu</span>
+            </div>
+            {skill.reasons?.some((r) => r.includes('nhắc tới')) && (
+              <p className="mt-1 text-xs text-sky-700">
+                {skill.reasons.filter((r) => r.includes('nhắc tới')).join(' · ')}
+              </p>
+            )}
           </li>
         ))}
       </ul>

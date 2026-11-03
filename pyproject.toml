@@ -13,6 +13,10 @@ dependencies = [
     "asyncpg>=0.30",
     "alembic>=1.14",
     "pyyaml>=6.0.2",
+    "langgraph>=1.2.19",
+    "google-genai>=2.34.0",
+    "pypdf>=6.21.4",
+    "python-multipart>=0.0.33",
 ]
 
 [dependency-groups]

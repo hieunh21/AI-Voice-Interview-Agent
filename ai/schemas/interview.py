@@ -116,6 +116,7 @@ class PlannedQuestion(ContractModel):
     personalization_note: str | None = None
     expected_points: list[NonEmptyStr] = Field(min_length=1)
     followup_hints: list[NonEmptyStr] = Field(default_factory=list)
+    scoring_caution: str | None = None
     rubric: list[RubricCriterion] = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -133,6 +134,8 @@ class PlanVersions(ContractModel):
     catalog: SemVer
     rubric: SemVer
     planner_prompt: SemVer
+    # "deterministic" when the plan was built from seeds without an LLM (fallback/offline).
+    planner_model: str = Field(default="deterministic", max_length=64)
 
 
 _REQUIRED_SOURCES = {

@@ -65,6 +65,8 @@ class QuestionSeed(ContractModel):
     objective: NonEmptyStr
     expected_points: list[NonEmptyStr] = Field(min_length=2)
     followup_probes: list[NonEmptyStr] = Field(min_length=1)
+    # A common wrong answer the evaluator must not reward (frozen into the plan).
+    scoring_caution: str | None = None
 
 
 class RubricCriterion(ContractModel):

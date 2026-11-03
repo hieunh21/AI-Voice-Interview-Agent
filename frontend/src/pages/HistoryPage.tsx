@@ -44,7 +44,7 @@ function SessionRow({ session }: { session: SessionSummary }) {
   const action =
     session.status === 'completed' && session.report_status === 'completed'
       ? { to: `/interviews/${session.id}/report`, label: 'Xem báo cáo' }
-      : session.status === 'ready' || session.status === 'in_progress'
+      : ['ready', 'in_progress', 'created', 'failed'].includes(session.status)
         ? { to: `/interviews/${session.id}`, label: 'Tiếp tục' }
         : null
 
